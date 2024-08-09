@@ -1,0 +1,141 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hdfs-namenode-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: standard
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: hdfs-namenode
+  labels:
+    app: hdfs
+spec:
+  selector:
+    matchLabels:
+      app: hdfs-namenode # has to match .spec.template.metadata.labels
+  serviceName: "hdfs-namenode"
+  replicas: 1 # by default is 1
+  minReadySeconds: 120 # by default is 0
+  template:
+    metadata:
+      labels:
+        app: hdfs-namenode # has to match .spec.selector.matchLabels
+    spec:
+      volumes:
+        - name: hdfs-configmap
+          configMap:
+            name: hdfs-configmap
+        - name: namenode-data
+          persistentVolumeClaim:
+            claimName: hdfs-namenode-pvc
+      terminationGracePeriodSeconds: 120
+      containers:
+      - image: apache/hadoop:3.3.6
+        name: hdfs-namenode
+        envFrom:
+        - configMapRef:
+            name: hdfs-configmap
+        resources:
+           requests:
+            memory: "512Mi"
+            cpu: "500m"
+           limits:
+            memory: "768Mi"
+            cpu: "750m"
+        env:
+        - name: ENSURE_NAMENODE_DIR
+          value: "/opt/hadoop/hdfs/namenode"
+        volumeMounts:
+          - mountPath: /opt/hadoop/etc/hadoop/core-site.xml
+            name: hdfs-configmap
+            subPath: core-site.xml
+          - mountPath: /opt/hadoop/etc/hadoop/hdfs-site.xml
+            name: hdfs-configmap
+            subPath: hdfs-site.xml
+          - mountPath: /opt/hadoop/hdfs/namenode
+            name: namenode-data
+
+        # command: ["sh", "-c", "export ENSURE_NAMENODE_DIR=/tmp/hadoop-hadoop/dfs/name && hdfs namenode -format -force && hdfs namenode"]
+        command: ["/bin/sh"]
+        args: ["-c", "if [ ! -f /opt/hadoop/hdfs/namenode/.initialized ]; then hdfs namenode -format -force && touch /opt/hadoop/hdfs/namenode/.initialized; fi && exec hdfs namenode"]
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hdfs-namenode
+spec:
+  selector:
+    app: hdfs-namenode
+  clusterIP: None
+  ports:
+    - protocol: TCP
+      name: hdfs-namenode-ui
+      port: 9870
+      targetPort: 9870
+    - protocol: TCP
+      name: hdfs-namenode-protocol
+      port: 8020
+      targetPort: 8020
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: hdfs-datanode
+spec:
+  selector:
+    matchLabels:
+      app: hdfs-datanode # has to match .spec.template.metadata.labels
+  serviceName: "hdfs-datanode"
+  replicas: 2 # by default is 1
+  minReadySeconds: 120 # by default is 0
+  template:
+    metadata:
+      labels:
+        app: hdfs-datanode # has to match .spec.selector.matchLabels
+    spec:
+      volumes:
+        - name: hdfs-configmap
+          configMap:
+            name: hdfs-configmap
+      terminationGracePeriodSeconds: 120
+      containers:
+      - image: apache/hadoop:3.3.6
+        name: hdfs-datanode
+        resources:
+           requests:
+            memory: "512Mi"
+            cpu: "500m"
+           limits:
+            memory: "768Mi"
+            cpu: "750m"
+        volumeMounts:
+          - mountPath: /opt/hadoop/etc/hadoop/core-site.xml
+            name: hdfs-configmap
+            subPath: core-site.xml
+          - mountPath: /opt/hadoop/etc/hadoop/hdfs-site.xml
+            name: hdfs-configmap
+            subPath: hdfs-site.xml
+        command: ["hdfs", "datanode"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hdfs-datanode
+spec:
+  selector:
+    app: hdfs-datanode
+  clusterIP: None
+  ports:
+    - protocol: TCP
+      name: sparkworker
+      port: 8081
+      targetPort: 8081
+---
