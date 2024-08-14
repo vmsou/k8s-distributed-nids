@@ -61,11 +61,9 @@ spec:
             subPath: hdfs-site.xml
           - mountPath: /opt/hadoop/hdfs/namenode
             name: namenode-data
-
-        # command: ["sh", "-c", "export ENSURE_NAMENODE_DIR=/tmp/hadoop-hadoop/dfs/name && hdfs namenode -format -force && hdfs namenode"]
+            
         command: ["/bin/sh"]
         args: ["-c", "if [ ! -f /opt/hadoop/hdfs/namenode/.initialized ]; then hdfs namenode -format -force && touch /opt/hadoop/hdfs/namenode/.initialized; fi && exec hdfs namenode"]
-
 ---
 apiVersion: v1
 kind: Service
@@ -123,6 +121,7 @@ spec:
           - mountPath: /opt/hadoop/etc/hadoop/hdfs-site.xml
             name: hdfs-configmap
             subPath: hdfs-site.xml
+
         command: ["hdfs", "datanode"]
 ---
 apiVersion: v1
