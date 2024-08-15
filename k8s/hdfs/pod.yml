@@ -74,7 +74,7 @@ spec:
             name: hdfs-namenode-data
             
         command: ["/bin/sh"]
-        args: ["-c", "if [ ! -f /data/hdfs/namenode/.initialized ]; then hdfs namenode -format -force && touch /data/hdfs/namenode/.initialized; fi && exec hdfs namenode"]
+        args: ["-c", "if [ ! -f /data/hdfs/namenode/current/VERSION ]; then hdfs namenode -format -force; fi && exec hdfs namenode"]
 ---
 apiVersion: v1
 kind: Service
