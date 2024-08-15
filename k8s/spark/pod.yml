@@ -1,0 +1,132 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: spark-master
+spec:
+  selector:
+    matchLabels:
+      app: spark-master # has to match .spec.template.metadata.labels
+  serviceName: "spark-master"
+  replicas: 1 # by default is 1
+  minReadySeconds: 120 # by default is 0
+  template:
+    metadata:
+      labels:
+        app: spark-master # has to match .spec.selector.matchLabels
+    spec:
+      volumes:
+        - name: spark-configmap
+          configMap:
+            name: spark-configmap
+      terminationGracePeriodSeconds: 120
+      containers:
+      - image: bitnami/spark:3.5.1-debian-12-r12
+        name: spark-master
+        env:
+        - name: SPARK_MASTER_HOST
+          value: spark-master
+        - name: SPARK_MODE
+          value: master
+        - name: SPARK_USER
+          value: spark
+        resources:
+           requests:
+            memory: "512Mi"
+            cpu: "500m"
+           limits:
+            memory: "768Mi"
+            cpu: "750m"
+        volumeMounts:
+          - mountPath: /opt/bitnami/spark/conf/spark-defaults.conf
+            name: spark-configmap
+            subPath: spark-defaults.conf
+          - mountPath: /opt/bitnami/spark/conf/log4j2.properties
+            name: spark-configmap
+            subPath: log4j2.properties
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-master
+spec:
+  selector:
+    app: spark-master
+  clusterIP: None
+  ports:
+    - protocol: TCP
+      name: spark-master-ui
+      port: 8080
+      targetPort: 8080
+    - protocol: TCP
+      name: spark-master-protocol
+      port: 7077
+      targetPort: 7077
+    - protocol: TCP
+      name: spark-master-jobs
+      port: 4040
+      targetPort: 4040
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: spark-worker
+spec:
+  selector:
+    matchLabels:
+      app: spark-worker # has to match .spec.template.metadata.labels
+  serviceName: "spark-worker"
+  replicas: 1 # by default is 1
+  minReadySeconds: 120 # by default is 0
+  template:
+    metadata:
+      labels:
+        app: spark-worker # has to match .spec.selector.matchLabels
+    spec:
+      terminationGracePeriodSeconds: 120
+      containers:
+      - image: bitnami/spark:3.5.1-debian-12-r12
+        name: spark-worker
+        env:
+        - name: SPARK_MODE
+          value: worker
+        - name: SPARK_MASTER_URL
+          value: spark://spark-master:7077
+        - name: SPARK_USER
+          value: spark
+        resources:
+           requests:
+            memory: "512Mi"
+            cpu: "500m"
+           limits:
+            memory: "768Mi"
+            cpu: "750m"
+        volumeMounts:
+          - mountPath: /opt/bitnami/spark/conf/spark-defaults.conf
+            name: spark-configmap
+            subPath: spark-defaults.conf
+          - mountPath: /opt/bitnami/spark/conf/log4j2.properties
+            name: spark-configmap
+            subPath: log4j2.properties
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-worker
+spec:
+  selector:
+    app: spark-worker
+  clusterIP: None
+  ports:
+    - protocol: TCP
+      name: spark-worker-ui
+      port: 8080
+      targetPort: 8080
+    - protocol: TCP
+      name: spark-worker-protocol
+      port: 7077
+      targetPort: 7077
+    - protocol: TCP
+      name: spark-worker-jobs
+      port: 4040
+      targetPort: 4040
+---
