@@ -30,10 +30,10 @@ data:
         </property>
         <property>
                 <name>dfs.namenode.name.dir</name>
-                <value>file:///opt/hadoop/hdfs/namenode</value>
+                <value>file:///data/hdfs/namenode</value>
         </property>
         <property>
                 <name>dfs.datanode.data.dir</name>
-                <value>file:///opt/hadoop/hdfs/datanode</value>
+                <value>file:///data/hdfs/datanode</value>
         </property>
     </configuration>

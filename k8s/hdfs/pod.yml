@@ -1,4 +1,16 @@
 apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: hdfs-namenode-pv
+spec:
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data/hdfs/namenode/"
+---
+apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: hdfs-namenode-pvc
@@ -8,14 +20,11 @@ spec:
   resources:
     requests:
       storage: 1Gi
-  storageClassName: standard
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: hdfs-namenode
-  labels:
-    app: hdfs
 spec:
   selector:
     matchLabels:
@@ -28,20 +37,25 @@ spec:
       labels:
         app: hdfs-namenode # has to match .spec.selector.matchLabels
     spec:
+      hostname: hdfs-namenode
       volumes:
         - name: hdfs-configmap
           configMap:
             name: hdfs-configmap
-        - name: namenode-data
+        - name: hdfs-namenode-data
           persistentVolumeClaim:
             claimName: hdfs-namenode-pvc
+      initContainers:
+      - name: init-chown-data
+        image: busybox
+        command: ['sh', '-c', 'chown -R 1000:100 /data/hdfs/namenode/', '&&', 'chmod -R 755 /data/hdfs/namenode/']
+        volumeMounts:
+        - mountPath: /data/hdfs/namenode/
+          name: hdfs-namenode-data
       terminationGracePeriodSeconds: 120
       containers:
       - image: apache/hadoop:3.3.6
         name: hdfs-namenode
-        envFrom:
-        - configMapRef:
-            name: hdfs-configmap
         resources:
            requests:
             memory: "512Mi"
@@ -49,9 +63,6 @@ spec:
            limits:
             memory: "768Mi"
             cpu: "750m"
-        env:
-        - name: ENSURE_NAMENODE_DIR
-          value: "/opt/hadoop/hdfs/namenode"
         volumeMounts:
           - mountPath: /opt/hadoop/etc/hadoop/core-site.xml
             name: hdfs-configmap
@@ -59,11 +70,11 @@ spec:
           - mountPath: /opt/hadoop/etc/hadoop/hdfs-site.xml
             name: hdfs-configmap
             subPath: hdfs-site.xml
-          - mountPath: /opt/hadoop/hdfs/namenode
-            name: namenode-data
+          - mountPath: /data/hdfs/namenode/
+            name: hdfs-namenode-data
             
         command: ["/bin/sh"]
-        args: ["-c", "if [ ! -f /opt/hadoop/hdfs/namenode/.initialized ]; then hdfs namenode -format -force && touch /opt/hadoop/hdfs/namenode/.initialized; fi && exec hdfs namenode"]
+        args: ["-c", "if [ ! -f /data/hdfs/namenode/.initialized ]; then hdfs namenode -format -force && touch /data/hdfs/namenode/.initialized; fi && exec hdfs namenode"]
 ---
 apiVersion: v1
 kind: Service
@@ -83,6 +94,29 @@ spec:
       port: 8020
       targetPort: 8020
 ---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: hdfs-datanode-pv
+spec:
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data/hdfs/datanode/"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hdfs-datanode-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -92,7 +126,7 @@ spec:
     matchLabels:
       app: hdfs-datanode # has to match .spec.template.metadata.labels
   serviceName: "hdfs-datanode"
-  replicas: 2 # by default is 1
+  replicas: 1 # by default is 1
   minReadySeconds: 120 # by default is 0
   template:
     metadata:
@@ -103,6 +137,16 @@ spec:
         - name: hdfs-configmap
           configMap:
             name: hdfs-configmap
+        - name: hdfs-datanode-data
+          persistentVolumeClaim:
+            claimName: hdfs-datanode-pvc
+      initContainers:
+      - name: init-chown-data
+        image: busybox
+        command: ['sh', '-c', 'chown -R 1000:100 /data/hdfs/datanode', '&&', 'chmod -R 755 /data/hdfs/datanode']
+        volumeMounts:
+        - name: hdfs-datanode-data
+          mountPath: /data/hdfs/datanode
       terminationGracePeriodSeconds: 120
       containers:
       - image: apache/hadoop:3.3.6
@@ -121,6 +165,8 @@ spec:
           - mountPath: /opt/hadoop/etc/hadoop/hdfs-site.xml
             name: hdfs-configmap
             subPath: hdfs-site.xml
+          - mountPath: /data/hdfs/datanode
+            name: hdfs-datanode-data
 
         command: ["hdfs", "datanode"]
 ---
@@ -134,7 +180,7 @@ spec:
   clusterIP: None
   ports:
     - protocol: TCP
-      name: sparkworker
+      name: hdfs-datanode-protocol
       port: 8081
       targetPort: 8081
 ---
