@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-master
+spec:
+  selector:
+    app: spark-master
+  clusterIP: None
+  ports:
+    - protocol: TCP
+      name: spark-master-ui
+      port: 8080
+      targetPort: 8080
+    - protocol: TCP
+      name: spark-master-protocol
+      port: 7077
+      targetPort: 7077
+    - protocol: TCP
+      name: spark-master-jobs
+      port: 4040
+      targetPort: 4040
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-worker
+spec:
+  selector:
+    app: spark-worker
+  clusterIP: None
+  ports:
+    - protocol: TCP
+      name: spark-worker-ui
+      port: 8080
+      targetPort: 8080
+    - protocol: TCP
+      name: spark-worker-protocol
+      port: 7077
+      targetPort: 7077
+    - protocol: TCP
+      name: spark-worker-jobs
+      port: 4040
+      targetPort: 4040
