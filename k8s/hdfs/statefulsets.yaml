@@ -1,26 +1,3 @@
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: hdfs-namenode-pv
-spec:
-  capacity:
-    storage: 2Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: "/mnt/data/hdfs/namenode/"
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: hdfs-namenode-pvc
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
----
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -30,7 +7,7 @@ spec:
     matchLabels:
       app: hdfs-namenode # has to match .spec.template.metadata.labels
   serviceName: "hdfs-namenode"
-  replicas: 1 # by default is 1
+  replicas: 1
   minReadySeconds: 120 # by default is 0
   template:
     metadata:
@@ -42,9 +19,6 @@ spec:
         - name: hdfs-configmap
           configMap:
             name: hdfs-configmap
-        - name: hdfs-namenode-data
-          persistentVolumeClaim:
-            claimName: hdfs-namenode-pvc
       initContainers:
       - name: init-chown-data
         image: busybox
@@ -75,47 +49,16 @@ spec:
             
         command: ["/bin/sh"]
         args: ["-c", "if [ ! -f /data/hdfs/namenode/current/VERSION ]; then hdfs namenode -format -force; fi && exec hdfs namenode"]
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: hdfs-namenode
-spec:
-  selector:
-    app: hdfs-namenode
-  clusterIP: None
-  ports:
-    - protocol: TCP
-      name: hdfs-namenode-ui
-      port: 9870
-      targetPort: 9870
-    - protocol: TCP
-      name: hdfs-namenode-protocol
-      port: 8020
-      targetPort: 8020
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: hdfs-datanode-pv
-spec:
-  capacity:
-    storage: 2Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: "/mnt/data/hdfs/datanode/"
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: hdfs-datanode-pvc
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
+
+  volumeClaimTemplates:
+  - metadata:
+      name: hdfs-namenode-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 2Gi
+      storageClassName: hdfs-namenode-storage
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -126,7 +69,8 @@ spec:
     matchLabels:
       app: hdfs-datanode # has to match .spec.template.metadata.labels
   serviceName: "hdfs-datanode"
-  replicas: 1 # by default is 1
+  replicas: 2
+  podManagementPolicy: Parallel
   minReadySeconds: 120 # by default is 0
   template:
     metadata:
@@ -137,9 +81,6 @@ spec:
         - name: hdfs-configmap
           configMap:
             name: hdfs-configmap
-        - name: hdfs-datanode-data
-          persistentVolumeClaim:
-            claimName: hdfs-datanode-pvc
       initContainers:
       - name: init-chown-data
         image: busybox
@@ -165,22 +106,16 @@ spec:
           - mountPath: /opt/hadoop/etc/hadoop/hdfs-site.xml
             name: hdfs-configmap
             subPath: hdfs-site.xml
-          - mountPath: /data/hdfs/datanode
+          - mountPath: /data/hdfs/datanode/
             name: hdfs-datanode-data
 
         command: ["hdfs", "datanode"]
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: hdfs-datanode
-spec:
-  selector:
-    app: hdfs-datanode
-  clusterIP: None
-  ports:
-    - protocol: TCP
-      name: hdfs-datanode-protocol
-      port: 8081
-      targetPort: 8081
----
+  volumeClaimTemplates:
+  - metadata:
+      name: hdfs-datanode-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 2Gi
+      storageClassName: hdfs-datanode-storage
