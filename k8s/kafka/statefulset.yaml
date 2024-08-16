@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka-broker
+spec:
+  selector:
+    matchLabels:
+      app: kafka-broker # has to match .spec.template.metadata.labels
+  serviceName: "kafka-broker"
+  replicas: 2
+  podManagementPolicy: Parallel
+  template:
+    metadata:
+      labels:
+        app: kafka-broker # has to match .spec.selector.matchLabels
+    spec:
+      initContainers:
+      - name: init-chown-data
+        image: busybox
+        command: ['sh', '-c', 'chown -R 1001:1001 /bitnami/kafka/', '&&', 'chmod -R 755 /bitnami/kafka/']
+        volumeMounts:
+        - mountPath: /bitnami/kafka/
+          name: kafka-broker-data
+
+      containers:
+      - image: bitnami/kafka:3.6.2
+        name: kafka-broker
+        envFrom:
+        - configMapRef:
+            name: kafka-config
+        env:
+        - name: STATEFULSET_REPLICAS
+          value: '2'
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_CLUSTER
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['app']
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_INDEX
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['apps.kubernetes.io/pod-index']
+
+        - name: KAFKA_CFG_ADVERTISED_LISTENERS
+          value: "kraft://:9093,INTERNAL://$(POD_NAME).$(POD_CLUSTER).$(POD_NAMESPACE).svc.cluster.local:9092"
+        - name: KAFKA_CFG_LISTENERS
+          value: "kraft://:9093,CONTROLLER://$(POD_NAME).$(POD_CLUSTER).$(POD_NAMESPACE).svc.cluster.local:9094,INTERNAL://:9092"
+
+        resources:
+           requests:
+            memory: "512Mi"
+            cpu: "500m"
+           limits:
+            memory: "768Mi"
+            cpu: "750m"
+        volumeMounts:
+          - mountPath: /bitnami/kafka/
+            name: kafka-broker-data
+
+        command: ["/bin/bash", "-c"]
+        args: 
+          - |
+            export KAFKA_CFG_NODE_ID=$((POD_INDEX + 1))
+            export KAFKA_BROKER_ID=$KAFKA_CFG_NODE_ID
+             
+            voters=""
+            for i in $(seq 1 $STATEFULSET_REPLICAS); do
+              broker_id=$((i - 1))
+              voters+="$i@$POD_CLUSTER-$broker_id.$POD_CLUSTER.$POD_NAMESPACE.svc.cluster.local:9094,"
+            done
+            export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS="${voters%,}"
+
+            exec /opt/bitnami/scripts/kafka/entrypoint.sh /opt/bitnami/scripts/kafka/run.sh
+
+  volumeClaimTemplates:
+  - metadata:
+      name: kafka-broker-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 2Gi
+      storageClassName: kafka-broker-storage
