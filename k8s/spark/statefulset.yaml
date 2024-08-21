@@ -45,6 +45,14 @@ spec:
           - mountPath: /opt/bitnami/spark/conf/log4j2.properties
             name: spark-configmap
             subPath: log4j2.properties
+
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions: [{ key: app, operator: In, values: [spark] }]
+            topologyKey: "kubernetes.io/hostname"
+
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -52,6 +60,7 @@ metadata:
   name: spark-worker
   labels:
     app: spark
+    type: body
     role: worker
 spec:
   selector:
@@ -59,13 +68,14 @@ spec:
       app: spark
       role: worker
   serviceName: spark-headless
-  replicas: 2 # by default is 1
+  replicas: 1 # by default is 1
   podManagementPolicy: Parallel
   minReadySeconds: 120 # by default is 0
   template:
     metadata:
       labels:
         app: spark
+        type: body
         role: worker
     spec:
       volumes:
@@ -97,3 +107,10 @@ spec:
           - mountPath: /opt/bitnami/spark/conf/log4j2.properties
             name: spark-configmap
             subPath: log4j2.properties
+
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions: [{ key: app, operator: In, values: [spark] }]
+            topologyKey: "kubernetes.io/hostname"
