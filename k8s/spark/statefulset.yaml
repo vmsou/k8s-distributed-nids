@@ -2,26 +2,31 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: spark-master
+  labels:
+    app: spark
+    role: master
 spec:
   selector:
     matchLabels:
-      app: spark-master # has to match .spec.template.metadata.labels
-  serviceName: "spark-master"
+      app: spark
+      role: master
+  serviceName: spark-headless
   replicas: 1 # by default is 1
   podManagementPolicy: Parallel
   minReadySeconds: 120 # by default is 0
   template:
     metadata:
       labels:
-        app: spark-master # has to match .spec.selector.matchLabels
+        app: spark
+        role: master
     spec:
       volumes:
         - name: spark-configmap
           configMap:
             name: spark-configmap
-      terminationGracePeriodSeconds: 120
+      terminationGracePeriodSeconds: 30
       containers:
-      - image: bitnami/spark:3.5.1
+      - image: vmsou/dnids-spark:3.5.1
         name: spark-master
         env:
         - name: SPARK_MODE
@@ -45,37 +50,46 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: spark-worker
+  labels:
+    app: spark
+    role: worker
 spec:
   selector:
     matchLabels:
-      app: spark-worker # has to match .spec.template.metadata.labels
-  serviceName: "spark-worker"
+      app: spark
+      role: worker
+  serviceName: spark-headless
   replicas: 2 # by default is 1
   podManagementPolicy: Parallel
   minReadySeconds: 120 # by default is 0
   template:
     metadata:
       labels:
-        app: spark-worker # has to match .spec.selector.matchLabels
+        app: spark
+        role: worker
     spec:
       volumes:
         - name: spark-configmap
           configMap:
             name: spark-configmap
-      terminationGracePeriodSeconds: 120
+      terminationGracePeriodSeconds: 30
       containers:
-      - image: bitnami/spark:3.5.1
+      - image: vmsou/dnids-spark:3.5.1
         name: spark-worker
         env:
         - name: SPARK_MODE
-          value: worker
+          value: "worker"
+        - name: SPARK_WORKER_MEMORY
+          value: "2g"
+        - name: SPARK_MASTER_URL
+          value: "spark://spark-master-svc:7077"
         resources:
            requests:
             memory: "512Mi"
             cpu: "500m"
            limits:
-            memory: "768Mi"
-            cpu: "750m"
+            memory: "2Gi"
+            cpu: "2"
         volumeMounts:
           - mountPath: /opt/bitnami/spark/conf/spark-defaults.conf
             name: spark-configmap

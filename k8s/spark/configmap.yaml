@@ -4,8 +4,8 @@ metadata:
   name: spark-configmap
 data:
   spark-defaults.conf: |
-    spark.master                     spark://spark-master:7077
-    spark.hadoop.fs.defaultFS        hdfs://hdfs-namenode:8020/
+    spark.master                     spark://spark-master-svc:7077
+    spark.hadoop.fs.defaultFS        hdfs://hdfs-namenode-svc:8020/
   log4j2.properties: |
     # Set everything to be logged to the console
     rootLogger.level = warn
