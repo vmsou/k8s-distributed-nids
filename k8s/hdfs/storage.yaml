@@ -1,13 +1,7 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: hdfs-namenode-storage
+  name: hdfs-storage
 provisioner: k8s.io/minikube-hostpath
 volumeBindingMode: Immediate
----
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  name: hdfs-datanode-storage
-provisioner: k8s.io/minikube-hostpath
-volumeBindingMode: Immediate
+reclaimPolicy: Retain

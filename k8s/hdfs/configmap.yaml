@@ -9,11 +9,11 @@ data:
     <configuration>
         <property>
                 <name>fs.default.name</name>
-                <value>hdfs://hdfs-namenode</value>
+                <value>hdfs://hdfs-namenode-svc</value>
         </property>
         <property>
                 <name>fs.defaultFS</name>
-                <value>hdfs://hdfs-namenode:8020</value>
+                <value>hdfs://hdfs-namenode-svc:8020</value>
         </property>
     </configuration>
   hdfs-site.xml: |
@@ -22,7 +22,7 @@ data:
     <configuration>
         <property>
                 <name>dfs.namenode.rpc-address</name>
-                <value>hdfs-namenode:8020</value>
+                <value>hdfs-namenode-svc:8020</value>
         </property>
         <property>
                 <name>dfs.replication</name>
@@ -30,10 +30,10 @@ data:
         </property>
         <property>
                 <name>dfs.namenode.name.dir</name>
-                <value>file:///data/hdfs/namenode</value>
+                <value>file:///hadoop/dfs/namenode</value>
         </property>
         <property>
                 <name>dfs.datanode.data.dir</name>
-                <value>file:///data/hdfs/datanode</value>
+                <value>file:///hadoop/dfs/datanode</value>
         </property>
     </configuration>

@@ -2,31 +2,33 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: hdfs-namenode
+  labels:
+    app: hdfs
+    role: namenode
 spec:
   selector:
     matchLabels:
-      app: hdfs-namenode # has to match .spec.template.metadata.labels
-  serviceName: "hdfs-namenode"
+      app: hdfs
+      role: namenode
+  serviceName: hdfs-headless
   replicas: 1
-  minReadySeconds: 120 # by default is 0
   template:
     metadata:
       labels:
-        app: hdfs-namenode # has to match .spec.selector.matchLabels
+        app: hdfs
+        role: namenode
     spec:
-      hostname: hdfs-namenode
       volumes:
         - name: hdfs-configmap
           configMap:
             name: hdfs-configmap
       initContainers:
-      - name: init-chown-data
-        image: busybox
-        command: ['sh', '-c', 'chown -R 1000:100 /data/hdfs/namenode/', '&&', 'chmod -R 755 /data/hdfs/namenode/']
-        volumeMounts:
-        - mountPath: /data/hdfs/namenode/
-          name: hdfs-namenode-data
-      terminationGracePeriodSeconds: 120
+        - name: init-chown
+          image: busybox
+          command: ['sh', '-c', 'chown -R 1000:1000 /hadoop/dfs/namenode && chmod -R 755 /hadoop/dfs/namenode']
+          volumeMounts:
+            - name: hdfs-namenode-data
+              mountPath: /hadoop/dfs/namenode
       containers:
       - image: apache/hadoop:3.3.6
         name: hdfs-namenode
@@ -37,6 +39,7 @@ spec:
            limits:
             memory: "768Mi"
             cpu: "750m"
+
         volumeMounts:
           - mountPath: /opt/hadoop/etc/hadoop/core-site.xml
             name: hdfs-configmap
@@ -44,51 +47,53 @@ spec:
           - mountPath: /opt/hadoop/etc/hadoop/hdfs-site.xml
             name: hdfs-configmap
             subPath: hdfs-site.xml
-          - mountPath: /data/hdfs/namenode/
+          - mountPath: /hadoop/dfs/namenode
             name: hdfs-namenode-data
             
         command: ["/bin/sh"]
-        args: ["-c", "if [ ! -f /data/hdfs/namenode/current/VERSION ]; then hdfs namenode -format -force; fi && exec hdfs namenode"]
+        args: ["-c", "if [ ! -f /hadoop/dfs/namenode/current/VERSION ]; then hdfs namenode -format -force; fi && exec hdfs namenode"]
 
   volumeClaimTemplates:
   - metadata:
       name: hdfs-namenode-data
     spec:
+      storageClassName: hdfs-storage
       accessModes: [ "ReadWriteOnce" ]
       resources:
         requests:
           storage: 2Gi
-      storageClassName: hdfs-namenode-storage
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: hdfs-datanode
+  labels:
+    app: hdfs
+    role: datanode
 spec:
   selector:
     matchLabels:
-      app: hdfs-datanode # has to match .spec.template.metadata.labels
-  serviceName: "hdfs-datanode"
+      app: hdfs
+      role: datanode
+  serviceName: hdfs-headless
   replicas: 2
-  podManagementPolicy: Parallel
-  minReadySeconds: 120 # by default is 0
   template:
     metadata:
       labels:
-        app: hdfs-datanode # has to match .spec.selector.matchLabels
+        app: hdfs
+        role: datanode
     spec:
       volumes:
         - name: hdfs-configmap
           configMap:
             name: hdfs-configmap
       initContainers:
-      - name: init-chown-data
-        image: busybox
-        command: ['sh', '-c', 'chown -R 1000:100 /data/hdfs/datanode', '&&', 'chmod -R 755 /data/hdfs/datanode']
-        volumeMounts:
-        - name: hdfs-datanode-data
-          mountPath: /data/hdfs/datanode
-      terminationGracePeriodSeconds: 120
+        - name: init-chown
+          image: busybox
+          command: ['sh', '-c', 'chown -R 1000:1000 /hadoop/dfs/datanode && chmod -R 755 /hadoop/dfs/datanode']
+          volumeMounts:
+            - name: hdfs-datanode-data
+              mountPath: /hadoop/dfs/datanode
       containers:
       - image: apache/hadoop:3.3.6
         name: hdfs-datanode
@@ -99,6 +104,7 @@ spec:
            limits:
             memory: "768Mi"
             cpu: "750m"
+
         volumeMounts:
           - mountPath: /opt/hadoop/etc/hadoop/core-site.xml
             name: hdfs-configmap
@@ -106,16 +112,17 @@ spec:
           - mountPath: /opt/hadoop/etc/hadoop/hdfs-site.xml
             name: hdfs-configmap
             subPath: hdfs-site.xml
-          - mountPath: /data/hdfs/datanode/
+          - mountPath: /hadoop/dfs/datanode
             name: hdfs-datanode-data
-
+            
         command: ["hdfs", "datanode"]
+
   volumeClaimTemplates:
   - metadata:
       name: hdfs-datanode-data
     spec:
+      storageClassName: hdfs-storage
       accessModes: [ "ReadWriteOnce" ]
       resources:
         requests:
           storage: 2Gi
-      storageClassName: hdfs-datanode-storage
