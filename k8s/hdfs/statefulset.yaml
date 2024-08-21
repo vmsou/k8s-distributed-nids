@@ -53,6 +53,14 @@ spec:
         command: ["/bin/sh"]
         args: ["-c", "if [ ! -f /hadoop/dfs/namenode/current/VERSION ]; then hdfs namenode -format -force; fi && exec hdfs namenode"]
 
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions: [{ key: app, operator: In, values: [hdfs] }]
+            topologyKey: "kubernetes.io/hostname"
+              
+
   volumeClaimTemplates:
   - metadata:
       name: hdfs-namenode-data
@@ -76,7 +84,7 @@ spec:
       app: hdfs
       role: datanode
   serviceName: hdfs-headless
-  replicas: 2
+  replicas: 1
   template:
     metadata:
       labels:
@@ -116,6 +124,13 @@ spec:
             name: hdfs-datanode-data
             
         command: ["hdfs", "datanode"]
+
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions: [{ key: app, operator: In, values: [hdfs] }]
+            topologyKey: "kubernetes.io/hostname"
 
   volumeClaimTemplates:
   - metadata:
