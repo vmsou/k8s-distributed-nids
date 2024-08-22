@@ -9,6 +9,10 @@ Expand the name of the chart.
 {{- .Values.hdfs.name | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
+{{- define "spark.name" -}}
+{{- .Values.spark.name | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
 {{/*
 Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
@@ -54,6 +58,9 @@ app.kubernetes.io/name: {{ include "dnids.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
+{{/*
+HDFS Image
+*/}}
 {{- define "hdfs.image" -}}
 "{{ .Values.hdfs.image.repository }}:{{ .Values.hdfs.image.tag }}"
 {{- end }}
@@ -75,6 +82,33 @@ HDFS Selector labels
 */}}
 {{- define "hdfs.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "hdfs.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{/*
+Spark Image
+*/}}
+{{- define "spark.image" -}}
+"{{ .Values.spark.image.repository }}:{{ .Values.spark.image.tag }}"
+{{- end }}
+
+{{/*
+Spark labels
+*/}}
+{{- define "spark.labels" -}}
+helm.sh/chart: {{ include "dnids.chart" . }}
+{{ include "spark.selectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
+{{/*
+Spark Selector labels
+*/}}
+{{- define "spark.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "spark.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
