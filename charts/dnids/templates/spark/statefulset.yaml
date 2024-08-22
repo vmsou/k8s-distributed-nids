@@ -1,0 +1,126 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ printf "%s-master" (include "spark.name" .) }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: 
+    {{- include "spark.labels" . | nindent 4}}
+    app.kubernetes.io/component: master
+spec:
+  selector:
+    matchLabels: 
+      {{- include "spark.selectorLabels" . | nindent 6}}
+      app.kubernetes.io/component: master
+  serviceName: {{ printf "%s-headless" (include "spark.name" .) }}
+  replicas: 1
+  podManagementPolicy: Parallel
+  template:
+    metadata:
+      labels: 
+        {{- include "spark.labels" . | nindent 8}}
+        app.kubernetes.io/component: master
+    spec:
+      volumes:
+        - name: spark-configmap
+          configMap:
+            name: spark-configmap
+      terminationGracePeriodSeconds: 30
+      containers:
+      - name: spark-master
+        image: {{ include "spark.image" . }}
+        imagePullPolicy: {{ .Values.spark.image.pullPolicy | quote }}
+        env:
+        - name: SPARK_MODE
+          value: master
+        - name: SPARK_DAEMON_MEMORY
+          value: {{ .Values.spark.master.daemonMemoryLimit | quote }}
+        resources:
+           requests:
+            memory: "512Mi"
+            cpu: "500m"
+           limits:
+            memory: "768Mi"
+            cpu: "750m"
+        volumeMounts:
+          - mountPath: /opt/bitnami/spark/conf/spark-defaults.conf
+            name: spark-configmap
+            subPath: spark-defaults.conf
+          - mountPath: /opt/bitnami/spark/conf/log4j2.properties
+            name: spark-configmap
+            subPath: log4j2.properties
+
+      {{- if .Values.affinity.enabled }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions: [{key: 'app.kubernetes.io/name', operator: In, values: [spark]}]
+            topologyKey: "kubernetes.io/hostname"
+      {{- end }}
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ printf "%s-worker" (include "spark.name" .) }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: 
+    {{- include "spark.labels" . | nindent 4}}
+    app.kubernetes.io/component: worker
+spec:
+  selector:
+    matchLabels: 
+      {{- include "spark.selectorLabels" . | nindent 6}}
+      app.kubernetes.io/component: worker
+  serviceName: {{ printf "%s-headless" (include "spark.name" .) }}
+  replicas: {{ .Values.spark.worker.replicaCount }}
+  podManagementPolicy: Parallel
+  template:
+    metadata:
+      labels: 
+        {{- include "spark.labels" . | nindent 8}}
+        app.kubernetes.io/component: worker
+    spec:
+      volumes:
+        - name: spark-configmap
+          configMap:
+            name: spark-configmap
+      terminationGracePeriodSeconds: 30
+      containers:
+      - name: spark-worker
+        image: {{ include "spark.image" . }}
+        imagePullPolicy: {{ .Values.spark.image.pullPolicy | quote }}
+        env:
+        - name: SPARK_MODE
+          value: "worker"
+        - name: SPARK_DAEMON_MEMORY
+          value: {{ .Values.spark.worker.daemonMemoryLimit | quote }}
+        {{- if .Values.spark.worker.memoryLimit }}
+        - name: SPARK_WORKER_MEMORY
+          value: {{ .Values.spark.worker.memoryLimit | quote }}
+        {{- end }}
+        - name: SPARK_MASTER_URL
+          value: {{ printf "spark://%s-master-svc:7077" (include "spark.name" .) }}
+        resources:
+           requests:
+            memory: "512Mi"
+            cpu: "500m"
+           limits:
+            memory: "1Gi"
+            cpu: "1"
+        volumeMounts:
+          - mountPath: /opt/bitnami/spark/conf/spark-defaults.conf
+            name: spark-configmap
+            subPath: spark-defaults.conf
+          - mountPath: /opt/bitnami/spark/conf/log4j2.properties
+            name: spark-configmap
+            subPath: log4j2.properties
+
+      {{- if .Values.affinity.enabled }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions: [{key: 'app.kubernetes.io/name', operator: In, values: [spark]}]
+            topologyKey: "kubernetes.io/hostname"
+      {{- end }}            
