@@ -5,7 +5,6 @@ affinity:
 hdfs:
   name: "hdfs"
   image:
-    registry: docker.io
     repository: apache/hadoop
     tag: 3.3.6
     pullPolicy: IfNotPresent
@@ -23,7 +22,32 @@ hdfs:
       http: 8080
       https: 8480
       cluster: 7077
+  
+spark:
+  name: "spark"
+  image:
+    repository: vmsou/dnids-spark
+    tag: 3.5.1
+    pullPolicy: IfNotPresent
 
+  master:
+    daemonMemoryLimit: ""
+
+    containerPorts:
+      http: 8080
+      https: 8480
+      cluster: 7077
+
+  worker:
+    daemonMemoryLimit: ""
+    memoryLimit: ""
+
+    replicaCount: 1
+    
+    containerPorts:
+      http: 8080
+      https: 8480
+      cluster: 7077
 
 # DEFAULT
 magePullSecrets: []
