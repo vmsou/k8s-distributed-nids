@@ -1,0 +1,150 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ printf "%s-namenode" (include "hdfs.name" .) }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: 
+    {{- include "hdfs.labels" . | nindent 4}}
+    app.kubernetes.io/component: namenode
+spec:
+  selector:
+    matchLabels: 
+      {{- include "hdfs.selectorLabels" . | nindent 6}}
+      app.kubernetes.io/component: namenode
+  serviceName: {{ printf "%s-headless" (include "hdfs.name" .) }}
+  replicas: 1
+  template:
+    metadata:
+      labels: 
+        {{- include "hdfs.labels" . | nindent 8}}
+        app.kubernetes.io/component: namenode
+    spec:
+      volumes:
+        - name: hdfs-configmap
+          configMap:
+            name: hdfs-configmap
+      initContainers:
+        - name: init-chown
+          image: busybox
+          command: ['sh', '-c', 'chown -R 1000:1000 /hadoop/dfs/namenode && chmod -R 755 /hadoop/dfs/namenode']
+          volumeMounts:
+            - name: hdfs-namenode-data
+              mountPath: /hadoop/dfs/namenode
+      containers:
+      - name: hdfs-namenode
+        image: {{ include "hdfs.image" . }}
+        imagePullPolicy: {{ .Values.hdfs.image.pullPolicy | quote }}
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "768Mi"
+            cpu: "750m"
+
+        volumeMounts:
+          - mountPath: /opt/hadoop/etc/hadoop/core-site.xml
+            name: hdfs-configmap
+            subPath: core-site.xml
+          - mountPath: /opt/hadoop/etc/hadoop/hdfs-site.xml
+            name: hdfs-configmap
+            subPath: hdfs-site.xml
+          - mountPath: /hadoop/dfs/namenode
+            name: hdfs-namenode-data
+            
+        command: ["/bin/sh"]
+        args: ["-c", "if [ ! -f /hadoop/dfs/namenode/current/VERSION ]; then hdfs namenode -format -force; fi && exec hdfs namenode"]
+
+      {{- if .Values.affinity.enabled }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions: [{key: 'app.kubernetes.io/name', operator: In, values: [ {{ include "hdfs.name" . }} ]}]
+            topologyKey: "kubernetes.io/hostname"
+      {{- end }}
+
+  volumeClaimTemplates:
+  - metadata:
+      name: hdfs-namenode-data
+    spec:
+      storageClassName: hdfs-storage
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 2Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ printf "%s-datanode" (include "hdfs.name" .) }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: 
+    {{- include "hdfs.labels" . | nindent 4}}
+    app.kubernetes.io/component: datanode
+spec:
+  selector:
+    matchLabels: 
+      {{- include "hdfs.selectorLabels" . | nindent 6}}
+      app.kubernetes.io/component: datanode
+  serviceName: {{ printf "%s-headless" (include "hdfs.name" .) }}
+  replicas: {{ .Values.hdfs.datanode.replicaCount }}
+  template:
+    metadata:
+      labels: 
+        {{- include "hdfs.labels" . | nindent 8}}
+        app.kubernetes.io/component: datanode
+    spec:
+      volumes:
+        - name: hdfs-configmap
+          configMap:
+            name: hdfs-configmap
+      initContainers:
+        - name: init-chown
+          image: busybox
+          command: ['sh', '-c', 'chown -R 1000:1000 /hadoop/dfs/datanode && chmod -R 755 /hadoop/dfs/datanode']
+          volumeMounts:
+          - name: hdfs-datanode-data
+            mountPath: /hadoop/dfs/datanode
+      containers:
+      - name: hdfs-datanode
+        image: {{ include "hdfs.image" . }}
+        imagePullPolicy: {{ .Values.hdfs.image.pullPolicy | quote }}
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "768Mi"
+            cpu: "750m"
+
+        volumeMounts:
+          - mountPath: /opt/hadoop/etc/hadoop/core-site.xml
+            name: hdfs-configmap
+            subPath: core-site.xml
+          - mountPath: /opt/hadoop/etc/hadoop/hdfs-site.xml
+            name: hdfs-configmap
+            subPath: hdfs-site.xml
+          - mountPath: /hadoop/dfs/datanode
+            name: hdfs-datanode-data
+            
+        command: ["hdfs", "datanode"]
+
+      {{- if .Values.affinity.enabled }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+                            matchExpressions: [{key: 'app.kubernetes.io/name', operator: In, values: [ {{ include "hdfs.name" . }} ]}]
+            topologyKey: "kubernetes.io/hostname"
+      {{- end }}
+
+  volumeClaimTemplates:
+  - metadata:
+      name: hdfs-datanode-data
+    spec:
+      storageClassName: hdfs-storage
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 2Gi
