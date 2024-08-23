@@ -13,6 +13,10 @@ Expand the name of the chart.
 {{- .Values.spark.name | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
+{{- define "kafka.name" -}}
+{{- .Values.kafka.name | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
 {{/*
 Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
@@ -93,7 +97,7 @@ Spark Image
 {{- end }}
 
 {{/*
-Spark labels
+Spark Labels
 */}}
 {{- define "spark.labels" -}}
 helm.sh/chart: {{ include "dnids.chart" . }}
@@ -109,6 +113,33 @@ Spark Selector labels
 */}}
 {{- define "spark.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "spark.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{/*
+Kafka Image
+*/}}
+{{- define "kafka.image" -}}
+"{{ .Values.kafka.image.repository }}:{{ .Values.kafka.image.tag }}"
+{{- end }}
+
+{{/*
+Kafka Labels
+*/}}
+{{- define "kafka.labels" -}}
+helm.sh/chart: {{ include "dnids.chart" . }}
+{{ include "kafka.selectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
+{{/*
+Kafka Selector labels
+*/}}
+{{- define "kafka.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "kafka.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
