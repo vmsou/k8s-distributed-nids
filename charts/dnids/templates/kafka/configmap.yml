@@ -1,0 +1,21 @@
+{{- if .Values.kafka.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "%s-configmap" (include "kafka.name" .) }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "kafka.labels" . | nindent 4 }}
+data:
+  KAFKA_ENABLE_KRAFT: "yes"
+  KAFKA_CFG_PROCESS_ROLES: "broker,controller"
+  KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+  KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "kraft:PLAINTEXT,CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT"
+  ALLOW_ANONYMOUS_LOGIN: {{ .Values.kafka.broker.ALLOW_ANONYMOUS_LOGIN | quote }}
+  ALLOW_PLAINTEXT_LISTENER: "yes"
+  BITNAMI_DEBUG: {{ .Values.kafka.broker.debug | quote }}
+  KAFKA_CFG_KRAFT_REPLICATION_FACTOR: {{ .Values.kafka.broker.KRAFT_REPLICATION_FACTOR | quote }}
+  KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: {{ .Values.kafka.broker.DEFAULT_REPLICATION_FACTOR | quote }}
+  KAFKA_KRAFT_CLUSTER_ID: "Bf-r4F4DSmSMQd8ax5lTHg"
+  KAFKA_CFG_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+{{- end }}

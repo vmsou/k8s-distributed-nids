@@ -1,0 +1,12 @@
+{{- if .Values.kafka.enabled }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ printf "%s-storage" (include "kafka.name" .) }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: 
+    {{- include "kafka.labels" . | nindent 4}}
+provisioner: k8s.io/minikube-hostpath
+volumeBindingMode: Immediate
+reclaimPolicy: Retain
+{{- end }}

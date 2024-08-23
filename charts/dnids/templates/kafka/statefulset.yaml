@@ -1,0 +1,106 @@
+{{- if .Values.kafka.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ printf "%s-broker" (include "kafka.name" .) }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: 
+    {{- include "kafka.labels" . | nindent 4}}
+    app.kubernetes.io/component: broker
+spec:
+  selector:
+    matchLabels: 
+      {{- include "kafka.selectorLabels" . | nindent 6}}
+      app.kubernetes.io/component: broker
+  serviceName: {{ printf "%s-headless" (include "kafka.name" .) }}
+  replicas: {{ .Values.kafka.broker.replicaCount }}
+  podManagementPolicy: Parallel
+  template:
+    metadata:
+      labels: 
+        {{- include "kafka.labels" . | nindent 8}}
+        app.kubernetes.io/component: broker
+    spec:
+      initContainers:
+      - name: init-chown
+        image: busybox
+        command: ['sh', '-c', 'chown -R 1001:1001 /bitnami/kafka/', '&&', 'chmod -R 755 /bitnami/kafka/']
+        volumeMounts:
+        - mountPath: /bitnami/kafka/
+          name: kafka-broker-data
+
+      containers:
+      - name: kafka-broker
+        image: {{ include "kafka.image" . }}
+        imagePullPolicy: {{ .Values.kafka.image.pullPolicy | quote }}
+        envFrom:
+        - configMapRef:
+            name: kafka-configmap
+        env:
+        - name: STATEFULSET_REPLICAS
+          value: {{ .Values.kafka.broker.replicaCount | quote }}
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          value: {{ .Release.Namespace | quote }}
+        - name: POD_INDEX
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['apps.kubernetes.io/pod-index']
+        - name: POD_SERVICE
+          value: {{ printf "%s-headless" (include "kafka.name" .) }}
+        - name: INTERNAL_PORT
+          value: {{ .Values.kafka.broker.ports.internal | quote }}
+        - name: KRAFT_PORT
+          value: {{ .Values.kafka.broker.ports.kraft | quote }}
+        - name: CONTROLLER_PORT
+          value: {{ .Values.kafka.broker.ports.controller | quote }}
+        - name: KAFKA_CFG_ADVERTISED_LISTENERS
+          value: "kraft://:$(KRAFT_PORT),INTERNAL://$(POD_NAME).$(POD_SERVICE).$(POD_NAMESPACE).svc.cluster.local:$(INTERNAL_PORT)"
+        - name: KAFKA_CFG_LISTENERS
+          value: "kraft://:$(KRAFT_PORT),CONTROLLER://$(POD_NAME).$(POD_SERVICE).$(POD_NAMESPACE).svc.cluster.local:$(CONTROLLER_PORT),INTERNAL://:$(INTERNAL_PORT)"
+
+        {{- if .Values.kafka.broker.resources }}
+        resources: {{- toYaml .Values.kafka.broker.resources | nindent 10 }}
+        {{- end}}
+
+        volumeMounts:
+          - mountPath: /bitnami/kafka/
+            name: kafka-broker-data
+
+        command: ["/bin/bash", "-c"]
+        args: 
+          - |
+            export KAFKA_CFG_NODE_ID=$((POD_INDEX + 1))
+            export KAFKA_BROKER_ID=$KAFKA_CFG_NODE_ID
+             
+            voters=""
+            for i in $(seq 1 $STATEFULSET_REPLICAS); do
+              broker_id=$((i - 1))
+              voters+="$i@{{ printf "%s-broker" (include "kafka.name" .) }}-$broker_id.$POD_SERVICE.$POD_NAMESPACE.svc.cluster.local:$CONTROLLER_PORT,"
+            done
+            export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS="${voters%,}"
+
+            exec /opt/bitnami/scripts/kafka/entrypoint.sh /opt/bitnami/scripts/kafka/run.sh
+
+      {{- if .Values.affinity.enabled }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions: [{key: 'app.kubernetes.io/name', operator: In, values: [ {{ include "kafka.name" . }} ]}]
+            topologyKey: "kubernetes.io/hostname"
+      {{- end }}
+
+  volumeClaimTemplates:
+  - metadata:
+      name: kafka-broker-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+      storageClassName: kafka-storage
+{{- end }}
