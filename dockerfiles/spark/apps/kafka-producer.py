@@ -32,6 +32,7 @@ def create_session():
         .builder \
         .appName(name) \
         .config("spark.sql.debug.maxToStringFields", '100') \
+        .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1") \
         .getOrCreate()
     return spark
 

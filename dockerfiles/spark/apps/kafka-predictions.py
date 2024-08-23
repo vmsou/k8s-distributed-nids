@@ -12,7 +12,7 @@ from pyspark.sql.types import StructType
 
 
 def parse_arguments():
-    # kafka-predictions.py -b kafka:9092 -t NetV2 -m models/DTC_NETV2_MODEL --schema schemas/NetV2_schema.json
+    # kafka-predictions.py -b kafka-broker-0.kafka-headless.default.svc.cluster.local:9092 -t NetV2 --model "models/MODEL_DTC_2F_PR_AUC_UQ" --schema schemas/NetV2_schema.json
     parser = argparse.ArgumentParser(description="KafkaPredictions")
     parser.add_argument("-b", "--brokers", nargs="+", help="kafka.bootstrap.servers (i.e. <ip1>:<host1> <ip2>:<host2> ... <ipN>:<hostN>)", required=True)
     parser.add_argument("-t", "--topic", help="Kafka Topic (i.e. topic1)", required=True)
@@ -30,6 +30,7 @@ def create_session() -> SparkSession:
         .builder \
         .appName(name) \
         .config("spark.sql.debug.maxToStringFields", '100') \
+        .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1") \
         .getOrCreate()
     return spark
 
@@ -121,10 +122,11 @@ def main() -> None:
         .select(format_func.alias("features")) \
         .select("features.*")
     
-    valid_features = features.filter(F.expr(" AND ".join([c._jc.toString() for c in conditions])))
+    # valid_features = features.filter(F.expr(" AND ".join([c._jc.toString() for c in conditions])))
 
     print(" [PREDICTIONS] ".center(50, "-"))
-    predictions = model.transform(valid_features).select(features_col, prediction_col, "probability")
+    # predictions = model.transform(valid_features).select(features_col, prediction_col, "probability")
+    predictions = model.transform(features).select(features_col, prediction_col, "probability")
 
     query = predictions.writeStream \
         .queryName("Predictions Writer") \
