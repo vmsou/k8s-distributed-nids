@@ -34,13 +34,9 @@ spec:
           value: master
         - name: SPARK_DAEMON_MEMORY
           value: {{ .Values.spark.master.daemonMemoryLimit | quote }}
-        resources:
-           requests:
-            memory: "512Mi"
-            cpu: "500m"
-           limits:
-            memory: "768Mi"
-            cpu: "750m"
+        {{- if .Values.spark.master.resources }}
+        resources: {{- toYaml .Values.spark.master.resources | nindent 10 }}
+        {{- end}}
         volumeMounts:
           - mountPath: /opt/bitnami/spark/conf/spark-defaults.conf
             name: spark-configmap
@@ -101,13 +97,9 @@ spec:
         {{- end }}
         - name: SPARK_MASTER_URL
           value: {{ printf "spark://%s-master-svc:7077" (include "spark.name" .) }}
-        resources:
-           requests:
-            memory: "512Mi"
-            cpu: "500m"
-           limits:
-            memory: "1Gi"
-            cpu: "1"
+        {{- if .Values.spark.worker.resources }}
+        resources: {{- toYaml .Values.spark.worker.resources | nindent 10 }}
+        {{- end}}
         volumeMounts:
           - mountPath: /opt/bitnami/spark/conf/spark-defaults.conf
             name: spark-configmap

@@ -34,14 +34,9 @@ spec:
       - name: hdfs-namenode
         image: {{ include "hdfs.image" . }}
         imagePullPolicy: {{ .Values.hdfs.image.pullPolicy | quote }}
-        resources:
-          requests:
-            memory: "512Mi"
-            cpu: "500m"
-          limits:
-            memory: "768Mi"
-            cpu: "750m"
-
+        {{- if .Values.hdfs.namenode.resources }}
+        resources: {{- toYaml .Values.hdfs.namenode.resources | nindent 10 }}
+        {{- end}}
         volumeMounts:
           - mountPath: /opt/hadoop/etc/hadoop/core-site.xml
             name: hdfs-configmap
@@ -110,14 +105,9 @@ spec:
       - name: hdfs-datanode
         image: {{ include "hdfs.image" . }}
         imagePullPolicy: {{ .Values.hdfs.image.pullPolicy | quote }}
-        resources:
-          requests:
-            memory: "512Mi"
-            cpu: "500m"
-          limits:
-            memory: "768Mi"
-            cpu: "750m"
-
+        {{- if .Values.hdfs.datanode.resources }}
+        resources: {{- toYaml .Values.hdfs.datanode.resources | nindent 10 }}
+        {{- end}}
         volumeMounts:
           - mountPath: /opt/hadoop/etc/hadoop/core-site.xml
             name: hdfs-configmap

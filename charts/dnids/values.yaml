@@ -10,6 +10,11 @@ hdfs:
     pullPolicy: IfNotPresent
 
   namenode:
+    resources: {
+      "requests": {"cpu": "0.5", "memory": "512Mi" },
+      "limits": {"cpu": "0.75", "memory": "768Mi"}
+    }
+
     containerPorts:
       http: 8080
       https: 8480
@@ -17,6 +22,11 @@ hdfs:
 
   datanode:
     replicaCount: 1
+
+    resources: {
+      "requests": {"cpu": "0.5", "memory": "512Mi" },
+      "limits": {"cpu": "0.75", "memory": "768Mi"}
+    }
     
     containerPorts:
       http: 8080
@@ -33,17 +43,26 @@ spark:
   master:
     daemonMemoryLimit: ""
 
+    resources: {
+      "requests": {"cpu": "0.5", "memory": "512Mi" },
+      "limits": {"cpu": "0.75", "memory": "768Mi"}
+    }
+
     containerPorts:
       http: 8080
       https: 8480
       cluster: 7077
 
   worker:
+    replicaCount: 1
     daemonMemoryLimit: ""
     memoryLimit: ""
 
-    replicaCount: 1
-    
+    resources: {
+      "requests": {"cpu": "1.0", "memory": "2048Mi" },
+      "limits": {"cpu": "1.5", "memory": "3072Mi"}
+    }
+
     containerPorts:
       http: 8080
       https: 8480
