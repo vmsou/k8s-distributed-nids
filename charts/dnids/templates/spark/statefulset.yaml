@@ -1,3 +1,4 @@
+{{- if .Values.spark.enabled }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -96,7 +97,7 @@ spec:
           value: {{ .Values.spark.worker.memoryLimit | quote }}
         {{- end }}
         - name: SPARK_MASTER_URL
-          value: {{ printf "spark://%s-master-svc:7077" (include "spark.name" .) }}
+          value: {{ printf "spark://%s-master-svc:%d" (include "spark.name" .) (int .Values.spark.master.ports.protocol) }}
         {{- if .Values.spark.worker.resources }}
         resources: {{- toYaml .Values.spark.worker.resources | nindent 10 }}
         {{- end}}
@@ -116,3 +117,4 @@ spec:
               matchExpressions: [{key: 'app.kubernetes.io/name', operator: In, values: [spark]}]
             topologyKey: "kubernetes.io/hostname"
       {{- end }}            
+{{- end }}

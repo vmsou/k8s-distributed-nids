@@ -1,3 +1,4 @@
+{{- if .Values.hdfs.enabled }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -26,10 +27,10 @@ spec:
       initContainers:
         - name: init-chown
           image: busybox
-          command: ['sh', '-c', 'chown -R 1000:1000 /hadoop/dfs/namenode && chmod -R 755 /hadoop/dfs/namenode']
+          command: ['sh', '-c', 'chown -R 1000:1000 {{ .Values.hdfs.namenode.dir }} && chmod -R 755 {{ .Values.hdfs.namenode.dir }}']
           volumeMounts:
             - name: hdfs-namenode-data
-              mountPath: /hadoop/dfs/namenode
+              mountPath: {{ .Values.hdfs.namenode.dir }}
       containers:
       - name: hdfs-namenode
         image: {{ include "hdfs.image" . }}
@@ -44,11 +45,11 @@ spec:
           - mountPath: /opt/hadoop/etc/hadoop/hdfs-site.xml
             name: hdfs-configmap
             subPath: hdfs-site.xml
-          - mountPath: /hadoop/dfs/namenode
+          - mountPath: {{ .Values.hdfs.namenode.dir }}
             name: hdfs-namenode-data
             
         command: ["/bin/sh"]
-        args: ["-c", "if [ ! -f /hadoop/dfs/namenode/current/VERSION ]; then hdfs namenode -format -force; fi && exec hdfs namenode"]
+        args: ["-c", "if [ ! -f {{ .Values.hdfs.namenode.dir }}/current/VERSION ]; then hdfs namenode -format -force; fi && exec hdfs namenode"]
 
       {{- if .Values.affinity.enabled }}
       affinity:
@@ -97,10 +98,10 @@ spec:
       initContainers:
         - name: init-chown
           image: busybox
-          command: ['sh', '-c', 'chown -R 1000:1000 /hadoop/dfs/datanode && chmod -R 755 /hadoop/dfs/datanode']
+          command: ['sh', '-c', 'chown -R 1000:1000 {{ .Values.hdfs.datanode.dir }} && chmod -R 755 {{ .Values.hdfs.datanode.dir }}']
           volumeMounts:
           - name: hdfs-datanode-data
-            mountPath: /hadoop/dfs/datanode
+            mountPath: {{ .Values.hdfs.datanode.dir }}
       containers:
       - name: hdfs-datanode
         image: {{ include "hdfs.image" . }}
@@ -115,7 +116,7 @@ spec:
           - mountPath: /opt/hadoop/etc/hadoop/hdfs-site.xml
             name: hdfs-configmap
             subPath: hdfs-site.xml
-          - mountPath: /hadoop/dfs/datanode
+          - mountPath: {{ .Values.hdfs.datanode.dir }}
             name: hdfs-datanode-data
             
         command: ["hdfs", "datanode"]
@@ -137,4 +138,5 @@ spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:
         requests:
-          storage: 2Gi
+          storage: 10Gi
+{{- end }}

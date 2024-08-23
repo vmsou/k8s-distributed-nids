@@ -1,3 +1,4 @@
+{{- if .Values.spark.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -7,8 +8,8 @@ metadata:
     {{- include "spark.labels" . | nindent 4 }}
 data:
   spark-defaults.conf: |
-    spark.master                     {{ printf "spark://%s-master-svc:7077" (include "spark.name" .) }}
-    spark.hadoop.fs.defaultFS        hdfs://hdfs-namenode-svc:8020/
+    spark.master                     {{ printf "spark://%s-master-svc:%d" (include "spark.name" .) (int .Values.spark.master.ports.protocol) }} 
+    spark.hadoop.fs.defaultFS        {{ printf "hdfs://%s-namenode-svc:%d" (include "hdfs.name" .) (int .Values.hdfs.namenode.ports.protocol) }}
   log4j2.properties: |
     # Set everything to be logged to the console
     rootLogger.level = warn
@@ -64,3 +65,4 @@ data:
     appender.console.filter.1.onMismatch = neutral
 
     log4j.rootCategory=WARN, console
+{{- end }}

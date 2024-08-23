@@ -1,3 +1,4 @@
+{{- if .Values.hdfs.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -12,14 +13,14 @@ spec:
     {{- include "hdfs.selectorLabels" . | nindent 4}}
     app.kubernetes.io/component: namenode
   ports:
-  - protocol: TCP
-    name: http
-    port: 9870
-    targetPort: 9870
-  - protocol: TCP
-    name: hdfs
-    port: 8020
-    targetPort: 8020
+  - name: http
+    protocol: TCP
+    port: {{ .Values.hdfs.namenode.ports.http }}
+    targetPort: http
+  - name: protocol
+    protocol: TCP
+    port: {{ .Values.hdfs.namenode.ports.protocol }}
+    targetPort: protocol
 ---
 apiVersion: v1
 kind: Service
@@ -32,3 +33,4 @@ spec:
   clusterIP: None
   selector: 
     {{- include "hdfs.selectorLabels" . | nindent 4}}
+{{- end }}

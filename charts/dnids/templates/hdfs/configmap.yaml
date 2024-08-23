@@ -1,3 +1,4 @@
+{{- if .Values.hdfs.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -12,11 +13,11 @@ data:
     <configuration>
     <property>
       <name>fs.default.name</name>
-      <value>hdfs://hdfs-namenode-svc</value>
+      <value>{{ printf "hdfs://%s-namenode-svc" (include "hdfs.name" .) }}</value> 
     </property>
     <property>
       <name>fs.defaultFS</name>
-      <value>hdfs://hdfs-namenode-svc:8020</value>
+      <value>{{ printf "hdfs://%s-namenode-svc:%d" (include "hdfs.name" .) (int .Values.hdfs.namenode.ports.protocol) }}</value> 
     </property>
     </configuration>
   hdfs-site.xml: |
@@ -25,11 +26,11 @@ data:
     <configuration>
     <property>
         <name>dfs.namenode.rpc-address</name>
-        <value>hdfs-namenode-svc:8020</value>
+        <value>{{ printf "%s-namenode-svc:%d" (include "hdfs.name" .) (int .Values.hdfs.namenode.ports.protocol) }}</value>
     </property>
     <property>
         <name>dfs.replication</name>
-        <value>1</value>
+        <value>{{ .Values.hdfs.replication }}</value>
     </property>
     <property>
         <name>dfs.datanode.du.reserved</name>
@@ -37,10 +38,11 @@ data:
     </property>
     <property>
         <name>dfs.namenode.name.dir</name>
-        <value>file:///hadoop/dfs/namenode</value>
+        <value>{{ .Values.hdfs.namenode.dir }}</value>
     </property>
     <property>
         <name>dfs.datanode.data.dir</name>
-        <value>file:///hadoop/dfs/datanode</value>
+        <value>{{ .Values.hdfs.datanode.dir }}</value>
     </property>
     </configuration>
+{{- end }}
