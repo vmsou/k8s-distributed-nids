@@ -77,10 +77,10 @@ def main() -> None:
 
     features_col = model.stages[-1].getFeaturesCol()
     prediction_col = model.stages[-1].getPredictionCol()
-    target = model.stages[-1].getLabelCol()
+    target_col = model.stages[-1].getLabelCol()
     print("FEATURES COLUMN:", features_col)
     print("PREDICTION COLUMN:", prediction_col)
-    print("TARGET:", target)
+    print("TARGET:", target_col)
 
     print(f"OK. Loaded in {t1 - t0}s")
     print()

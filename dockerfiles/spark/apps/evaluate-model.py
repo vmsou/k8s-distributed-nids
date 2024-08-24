@@ -21,7 +21,7 @@ def parse_arguments():
     parser.add_argument("-d", "--dataset", help="Path to Dataset", required=True)
     parser.add_argument("--test-ratio", type=float, help="Ratio for test (0.0 to 1.0)", default=1.0)
     parser.add_argument("--seed", type=float, help="Seed Number", default=42)
-    parser.add_argument("model", help="Path to Model")
+    parser.add_argument("-m", "--model", help="Path to Model")
     return parser.parse_args()
 
 
@@ -50,7 +50,7 @@ def show_features_importances(model: PipelineModel, features: list[str]):
 
 
 def show_confusion_matrix(pred_labels: DataFrame, target: str):
-    print("x=real value, y=prediction")
+    print("x=prediction, y=real")
     confusion_matrix = pred_labels.groupBy(target).pivot("prediction").agg(F.count("prediction")).na.fill(0).orderBy(target)
     confusion_matrix.show()
 
@@ -62,8 +62,8 @@ def show_confusion_matrix2(pred_labels: DataFrame, target: str):
     print(confusion_matrix)
 
 
-def show_binary_metrics(predictions, target):
-    evaluator = BinaryClassificationEvaluator(labelCol=target, rawPredictionCol="rawPrediction")
+def show_binary_metrics(predictions, target_col, prediction_col):
+    evaluator = BinaryClassificationEvaluator(labelCol=target_col)
 
     # areaUnderROC (balanced) | areaUnderPR (imbalanced)
     metrics = [
@@ -75,25 +75,40 @@ def show_binary_metrics(predictions, target):
         score = evaluator.evaluate(predictions, {evaluator.metricName: metric})
         print(f"{metric}: {score}")
 
+    t0 = predictions[target_col] == 0
+    t1 = predictions[target_col] == 1
+    p0 = predictions[prediction_col] == 0
+    p1 = predictions[prediction_col] == 1
+    
+    tp = predictions.filter(t1 & p1).count()
+    tn = predictions.filter(t0 & p0).count()
+    fp = predictions.filter(t0 & p1).count()
+    fn = predictions.filter(t1 & p0).count()
+    
+    print()
+    print("Confusion Matrix:")
+    print(f"{tp=}")
+    print(f"{tn=}")
+    print(f"{fp=}")
+    print(f"{fn=}")
+    print()
+    print(f"{'Actual/Predicted':^15} | {'Positive':^10} | {'Negative':^10}")
+    print(f"{'-'*42}")
+    print(f"{'Positive':^15} | {tp:^10} | {fn:^10}")
+    print(f"{'Negative':^15} | {fp:^10} | {tn:^10}")
+    print()
 
-def show_multiclass_metrics(predictions, target):
-    evaluator = MulticlassClassificationEvaluator(labelCol=target)
+    accuracy = (tp + tn) / (tp + tn + fp + fn)
+    print(f"Accuracy: {accuracy}")
 
-    # f1|accuracy|weightedPrecision|weightedRecall|weightedTruePositiveRate|weightedFalsePositiveRate|weightedFMeasure|truePositiveRateByLabel|falsePositiveRateByLabel|precisionByLabel|recallByLabel|fMeasureByLabel|logLoss|hammingLoss
-    metrics = [
-        "accuracy",
-        "f1",
-        "truePositiveRateByLabel",
-        "falsePositiveRateByLabel",
-        # "weightedPrecision",
-        # "weightedRecall",
-        # "weightedTruePositiveRate",
-        # "weightedFalsePositiveRate"
-    ]
+    precision = tp / (tp + fp) if (tp + fp) != 0 else 0  
+    print(f"Precision: {precision}")
 
-    for metric in metrics:
-        score = evaluator.evaluate(predictions, {evaluator.metricName: metric})
-        print(f"{metric}: {score}")
+    recall = tp / (tp + fn) if (tp + fn) != 0 else 0.0  
+    print(f"Recall: {recall}")
+
+    f1_measure = 2 * (precision * recall) / (precision + recall) if (precision + recall) != 0 else 0.0  
+    print(f"F1 measure: {f1_measure}")
 
 
 def main():    
@@ -119,15 +134,17 @@ def main():
     model: Model = PipelineModel.load(MODEL_PATH)
     t1 = time.time()
     print(f"OK. Loaded in {t1 - t0}s")
-    target = model.stages[-1].getLabelCol()
-    features = model.stages[-1].getFeaturesCol()
+    target_col = model.stages[-1].getLabelCol()
+    features_col = model.stages[-1].getFeaturesCol()
+    prediction_col = model.stages[-1].getPredictionCol()
         
-    print("TARGET:", target)
-    print("FEATURES:", features)
+    print("TARGET:", target_col)
+    print("FEATURES:", features_col)
+    print("PREDICTIONS:", prediction_col)
     print()
 
     print(" [FEATURES IMPORTANCES] ".center(50, "-"))
-    show_features_importances(model, features)
+    show_features_importances(model, features_col)
     print()
 
     schema = None
@@ -163,27 +180,14 @@ def main():
     print(f"OK. Predicted in {t1 - t0}s")
     print()
 
-    pred_labels = predictions.select(features, "probability", "prediction", "label")
+    pred_labels = predictions.select(features_col, "probability", prediction_col, target_col)
     pred_labels.show(20)
-    print()
-
-    print(" [CONFUSION MATRIX] ".center(50, "-"))
-    t0 = time.time()
-    show_confusion_matrix(pred_labels, target)
-    t1 = time.time()
-    print(f"OK in {t1 - t0}s")
     print()
 
     print(" [METRICS] ".center(50, "-"))
     print("Binary Metrics:")
     t0 = time.time()
-    show_binary_metrics(predictions, target)
-    t1 = time.time()
-    print(f"OK in {t1 - t0}s")
-    print()
-    print("Multiclass Metrics")
-    t0 = time.time()
-    show_multiclass_metrics(predictions, target)
+    show_binary_metrics(predictions, target_col, prediction_col)
     t1 = time.time()
     print(f"OK in {t1 - t0}s")
     print()
