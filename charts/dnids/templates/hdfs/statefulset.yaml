@@ -68,7 +68,6 @@ spec:
         {{- include "hdfs.labels" . | nindent 8}}
         app.kubernetes.io/component: namenode
     spec:
-      storageClassName: hdfs-storage
       accessModes: [ "ReadWriteOnce" ]
       resources:
         requests:
@@ -88,7 +87,7 @@ spec:
       {{- include "hdfs.selectorLabels" . | nindent 6}}
       app.kubernetes.io/component: datanode
   serviceName: {{ printf "%s-headless" (include "hdfs.name" .) }}
-  replicas: {{ .Values.hdfs.datanode.replicaCount }}
+  replicas: {{ .Values.hdfs.datanode.replicas }}
   template:
     metadata:
       labels: 
@@ -142,7 +141,6 @@ spec:
         {{- include "hdfs.labels" . | nindent 8}}
         app.kubernetes.io/component: datanode
     spec:
-      storageClassName: hdfs-storage
       accessModes: [ "ReadWriteOnce" ]
       resources:
         requests:

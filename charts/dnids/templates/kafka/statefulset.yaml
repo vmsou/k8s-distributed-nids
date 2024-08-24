@@ -13,7 +13,7 @@ spec:
       {{- include "kafka.selectorLabels" . | nindent 6}}
       app.kubernetes.io/component: broker
   serviceName: {{ printf "%s-headless" (include "kafka.name" .) }}
-  replicas: {{ .Values.kafka.broker.replicaCount }}
+  replicas: {{ .Values.kafka.broker.replicas }}
   podManagementPolicy: Parallel
   template:
     metadata:
@@ -37,8 +37,10 @@ spec:
         - configMapRef:
             name: kafka-configmap
         env:
+        - name: STATEFULSET_NAME
+          value: {{ printf "%s-broker" (include "kafka.name" .) }}
         - name: STATEFULSET_REPLICAS
-          value: {{ .Values.kafka.broker.replicaCount | quote }}
+          value: {{ .Values.kafka.broker.replicas | quote }}
         - name: POD_NAME
           valueFrom:
             fieldRef:
@@ -79,7 +81,7 @@ spec:
             voters=""
             for i in $(seq 1 $STATEFULSET_REPLICAS); do
               broker_id=$((i - 1))
-              voters+="$i@{{ printf "%s-broker" (include "kafka.name" .) }}-$broker_id.$POD_SERVICE.$POD_NAMESPACE.svc.cluster.local:$CONTROLLER_PORT,"
+              voters+="$i@$STATEFULSET_NAME-$broker_id.$POD_SERVICE.$POD_NAMESPACE.svc.cluster.local:$CONTROLLER_PORT,"
             done
             export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS="${voters%,}"
 
@@ -106,5 +108,4 @@ spec:
       resources:
         requests:
           storage: 1Gi
-      storageClassName: kafka-storage
 {{- end }}

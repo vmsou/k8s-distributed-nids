@@ -22,7 +22,7 @@ hdfs:
 
   datanode:
     dir: "/hadoop/dfs/datanode"
-    replicaCount: 1
+    replicas: 1
 
     resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "1", "memory": "768Mi"}}
 
@@ -44,7 +44,7 @@ spark:
       protocol: 7077
 
   worker:
-    replicaCount: 1
+    replicas: 1
     daemonMemoryLimit: ""
     memoryLimit: ""
 
@@ -59,7 +59,7 @@ kafka:
     pullPolicy: IfNotPresent
 
   broker:
-    replicaCount: 1
+    replicas: 1
 
     BITNAMI_DEBUG: "yes"
     ALLOW_ANONYMOUS_LOGIN: "yes"

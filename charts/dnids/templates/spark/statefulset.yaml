@@ -70,7 +70,7 @@ spec:
       {{- include "spark.selectorLabels" . | nindent 6}}
       app.kubernetes.io/component: worker
   serviceName: {{ printf "%s-headless" (include "spark.name" .) }}
-  replicas: {{ .Values.spark.worker.replicaCount }}
+  replicas: {{ .Values.spark.worker.replicas }}
   podManagementPolicy: Parallel
   template:
     metadata:
