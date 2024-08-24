@@ -2,7 +2,7 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: {{ printf "%s-storage" (include "hdfs.name" .) }}
+  name: hdfs-storage
   namespace: {{ .Release.Namespace | quote }}
   labels: 
     {{- include "hdfs.labels" . | nindent 4}}

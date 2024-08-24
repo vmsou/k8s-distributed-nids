@@ -2,7 +2,7 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: {{ printf "%s-storage" (include "kafka.name" .) }}
+  name: kafka-storage
   namespace: {{ .Release.Namespace | quote }}
   labels: 
     {{- include "kafka.labels" . | nindent 4}}

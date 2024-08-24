@@ -97,6 +97,10 @@ spec:
   volumeClaimTemplates:
   - metadata:
       name: kafka-broker-data
+      namespace: {{ .Release.Namespace | quote }}
+      labels: 
+        {{- include "kafka.labels" . | nindent 8}}
+        app.kubernetes.io/component: broker
     spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:

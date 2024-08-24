@@ -63,6 +63,10 @@ spec:
   volumeClaimTemplates:
   - metadata:
       name: hdfs-namenode-data
+      namespace: {{ .Release.Namespace | quote }}
+      labels: 
+        {{- include "hdfs.labels" . | nindent 8}}
+        app.kubernetes.io/component: namenode
     spec:
       storageClassName: hdfs-storage
       accessModes: [ "ReadWriteOnce" ]
@@ -133,6 +137,10 @@ spec:
   volumeClaimTemplates:
   - metadata:
       name: hdfs-datanode-data
+      namespace: {{ .Release.Namespace | quote }}
+      labels: 
+        {{- include "hdfs.labels" . | nindent 8}}
+        app.kubernetes.io/component: datanode
     spec:
       storageClassName: hdfs-storage
       accessModes: [ "ReadWriteOnce" ]
