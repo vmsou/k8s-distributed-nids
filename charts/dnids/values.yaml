@@ -13,18 +13,18 @@ hdfs:
   replication: 1
 
   namenode:
-    dir: "hadoop/dfs/namenode"
-    resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "0.75", "memory": "768Mi"}}
+    dir: "/hadoop/dfs/namenode"
+    resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "1", "memory": "1024Mi"}}
 
     ports:
       http: 9870
       protocol: 8020
 
   datanode:
-    dir: "hadoop/dfs/datanode"
+    dir: "/hadoop/dfs/datanode"
     replicaCount: 1
 
-    resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "0.75", "memory": "768Mi"}}
+    resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "1", "memory": "768Mi"}}
 
 spark:
   enabled: true
@@ -48,7 +48,7 @@ spark:
     daemonMemoryLimit: ""
     memoryLimit: ""
 
-    resources: {"requests": {"cpu": "1.0", "memory": "2048Mi"}, "limits": {"cpu": "1.5", "memory": "3072Mi"}}
+    resources: {"requests": {"cpu": "1.0", "memory": "2048Mi"}, "limits": {"cpu": "2", "memory": "3072Mi"}}
 
 kafka:
   enabled: true
@@ -66,7 +66,7 @@ kafka:
     KRAFT_REPLICATION_FACTOR: "1"
     DEFAULT_REPLICATION_FACTOR: "1"
 
-    resources: {"requests": {"cpu": "0.5", "memory": "256Mi"}, "limits": {"cpu": "0.75", "memory": "512Mi"}}
+    resources: {"requests": {"cpu": "0.5", "memory": "256Mi"}, "limits": {"cpu": "0.75", "memory": "768Mi"}}
 
     ports:
       internal: 9092
