@@ -111,6 +111,24 @@ def show_binary_metrics(predictions, target_col, prediction_col):
     print(f"F1 measure: {f1_measure}")
 
 
+def show_multiclass_metrics(predictions, target_col, metricLabel=1.0):
+    evaluator = MulticlassClassificationEvaluator(labelCol=target_col, metricLabel=metricLabel)
+
+    # f1|accuracy|weightedPrecision|weightedRecall|weightedTruePositiveRate|weightedFalsePositiveRate|weightedFMeasure|truePositiveRateByLabel|falsePositiveRateByLabel|precisionByLabel|recallByLabel|fMeasureByLabel|logLoss|hammingLoss
+    metrics = [
+        "accuracy",
+        "f1",
+        "truePositiveRateByLabel",
+        "falsePositiveRateByLabel",
+        "precisionByLabel",
+        "recallByLabel",
+    ]
+
+    for metric in metrics:
+        score = evaluator.evaluate(predictions, {evaluator.metricName: metric})
+        print(f"{metric} (metricLabel={metricLabel}): {score}")
+
+
 def main():    
     args = parse_arguments()
     SCHEMA_PATH = args.schema
@@ -188,6 +206,13 @@ def main():
     print("Binary Metrics:")
     t0 = time.time()
     show_binary_metrics(predictions, target_col, prediction_col)
+    t1 = time.time()
+    print(f"OK in {t1 - t0}s")
+    print()
+
+    print("Multiclass Metrics:")
+    t0 = time.time()
+    show_multiclass_metrics(predictions, target_col)
     t1 = time.time()
     print(f"OK in {t1 - t0}s")
     print()
