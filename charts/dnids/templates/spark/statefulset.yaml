@@ -97,7 +97,7 @@ spec:
           value: {{ .Values.spark.worker.memoryLimit | quote }}
         {{- end }}
         - name: SPARK_MASTER_URL
-          value: {{ printf "spark://%s-master-svc:%d" (include "spark.name" .) (int .Values.spark.master.ports.protocol) }}
+          value: {{ printf "spark://%s-master-svc:%d" (include "spark.name" .) (int .Values.spark.service.ports.protocol) }}
         {{- if .Values.spark.worker.resources }}
         resources: {{- toYaml .Values.spark.worker.resources | nindent 10 }}
         {{- end}}

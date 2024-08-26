@@ -12,19 +12,33 @@ hdfs:
 
   replication: 1
 
-  namenode:
-    dir: "/hadoop/dfs/namenode"
-    resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "1", "memory": "1024Mi"}}
+  service:
+    type: ClusterIP
+    clusterIP: None
 
     ports:
       http: 9870
       protocol: 8020
+
+    nodePorts:
+      http: ""
+      protocol: ""
+
+  namenode:
+    dir: "/hadoop/dfs/namenode"
+    resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "1", "memory": "1024Mi"}}
+
+    persistence:
+      size: 2Gi
 
   datanode:
     dir: "/hadoop/dfs/datanode"
     replicas: 1
 
     resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "1", "memory": "768Mi"}}
+
+    persistence:
+      size: 10Gi
 
 spark:
   enabled: true
@@ -34,14 +48,22 @@ spark:
     tag: 3.5.1
     pullPolicy: IfNotPresent
 
-  master:
-    daemonMemoryLimit: ""
-
-    resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "1.0", "memory": "1024Mi"}}
+  service:
+    type: ClusterIP
+    clusterIP: None
 
     ports:
       http: 8080
       protocol: 7077
+
+    nodePorts:
+      http: ""
+      protocol: ""
+
+  master:
+    daemonMemoryLimit: ""
+
+    resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "1.0", "memory": "1024Mi"}}
 
   worker:
     replicas: 1
@@ -58,6 +80,20 @@ kafka:
     tag: 3.6.2
     pullPolicy: IfNotPresent
 
+  service:
+    type: ClusterIP
+    clusterIP: None
+
+    ports:
+      internal: 9092
+      kraft: 9093
+      controller: 9094
+
+    nodePorts:
+      internal: ""
+      kraft: ""
+      controller: ""
+
   broker:
     replicas: 1
 
@@ -68,10 +104,8 @@ kafka:
 
     resources: {"requests": {"cpu": "0.5", "memory": "256Mi"}, "limits": {"cpu": "0.75", "memory": "768Mi"}}
 
-    ports:
-      internal: 9092
-      kraft: 9093
-      controller: 9094
+    persistence:
+      size: 2Gi
 
 # DEFAULT
 magePullSecrets: []

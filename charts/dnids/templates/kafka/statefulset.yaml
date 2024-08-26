@@ -54,11 +54,11 @@ spec:
         - name: POD_SERVICE
           value: {{ printf "%s-headless" (include "kafka.name" .) }}
         - name: INTERNAL_PORT
-          value: {{ .Values.kafka.broker.ports.internal | quote }}
+          value: {{ .Values.kafka.service.ports.internal | quote }}
         - name: KRAFT_PORT
-          value: {{ .Values.kafka.broker.ports.kraft | quote }}
+          value: {{ .Values.kafka.service.ports.kraft | quote }}
         - name: CONTROLLER_PORT
-          value: {{ .Values.kafka.broker.ports.controller | quote }}
+          value: {{ .Values.kafka.service.ports.controller | quote }}
         - name: KAFKA_CFG_ADVERTISED_LISTENERS
           value: "kraft://:$(KRAFT_PORT),INTERNAL://$(POD_NAME).$(POD_SERVICE).$(POD_NAMESPACE).svc.cluster.local:$(INTERNAL_PORT)"
         - name: KAFKA_CFG_LISTENERS
@@ -107,5 +107,5 @@ spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:
         requests:
-          storage: 1Gi
+          storage: {{ .Values.kafka.broker.persistence.size }}
 {{- end }}

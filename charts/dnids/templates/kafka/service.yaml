@@ -8,22 +8,35 @@ metadata:
     {{- include "kafka.labels" . | nindent 4 }}
     app.kubernetes.io/component: broker
 spec:
-  clusterIP: None
+  type: {{ .Values.spark.service.type }}
+  {{- if and .Values.spark.service.clusterIP (eq .Values.spark.service.type "ClusterIP") }}
+  clusterIP: {{ .Values.spark.service.clusterIP }}
+  {{- end }}
   selector: 
     {{- include "kafka.selectorLabels" . | nindent 4}}
     app.kubernetes.io/component: broker
   ports:
   - name: internal
-    port: {{ .Values.kafka.broker.ports.internal }}
+    port: {{ .Values.kafka.service.ports.internal }}
+    {{- if and .Values.kafka.service.nodePorts.internal (eq .Values.kafka.service.type "NodePort") }}
+    nodePort: {{ .Values.kafka.service.nodePorts.internal }}
+    {{- end}}
   - name: kraft
-    port: {{ .Values.kafka.broker.ports.kraft }}
+    port: {{ .Values.kafka.service.ports.kraft }}
+    {{- if and .Values.kafka.service.nodePorts.kraft (eq .Values.kafka.service.type "NodePort") }}
+    nodePort: {{ .Values.kafka.service.nodePorts.kraft }}
+    {{- end}}
   - name: controller
-    port: {{ .Values.kafka.broker.ports.controller }}
+    port: {{ .Values.kafka.service.ports.controller }}
+    {{- if and .Values.kafka.service.nodePorts.controller (eq .Values.kafka.service.type "NodePort") }}
+    nodePort: {{ .Values.kafka.service.nodePorts.controller }}
+    {{- end}}
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: {{ printf "%s-headless" (include "kafka.name" .) }}
+  namespace: {{ .Release.Namespace | quote }}
   labels: 
     {{- include "kafka.labels" . | nindent 4}}
 spec:

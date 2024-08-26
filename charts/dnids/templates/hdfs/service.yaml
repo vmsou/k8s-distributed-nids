@@ -8,24 +8,34 @@ metadata:
     {{- include "hdfs.labels" . | nindent 4 }}
     app.kubernetes.io/component: namenode
 spec:
-  clusterIP: None
+  type: {{ .Values.hdfs.service.type }}
+  {{- if and .Values.hdfs.service.clusterIP (eq .Values.hdfs.service.type "ClusterIP") }}
+  clusterIP: {{ .Values.hdfs.service.clusterIP }}
+  {{- end }}
   selector: 
     {{- include "hdfs.selectorLabels" . | nindent 4}}
     app.kubernetes.io/component: namenode
   ports:
   - name: http
     protocol: TCP
-    port: {{ .Values.hdfs.namenode.ports.http }}
-    targetPort: http
+    port: {{ .Values.hdfs.service.ports.http }}
+    targetPort: {{ .Values.hdfs.service.ports.http }}
+    {{- if and .Values.hdfs.service.nodePorts.http (eq .Values.hdfs.service.type "NodePort") }}
+    nodePort: {{ .Values.hdfs.service.nodePorts.http }}
+    {{- end}}
   - name: protocol
     protocol: TCP
-    port: {{ .Values.hdfs.namenode.ports.protocol }}
-    targetPort: protocol
+    port: {{ .Values.hdfs.service.ports.protocol }}
+    targetPort: {{ .Values.hdfs.service.ports.protocol }}
+    {{- if and .Values.hdfs.service.nodePorts.protocol (eq .Values.hdfs.service.type "NodePort") }}
+    nodePort: {{ .Values.hdfs.service.nodePorts.protocol }}
+    {{- end}}
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: {{ printf "%s-headless" (include "hdfs.name" .) }}
+  namespace: {{ .Release.Namespace | quote }}
   labels: 
     {{- include "hdfs.labels" . | nindent 4}}
 spec:
