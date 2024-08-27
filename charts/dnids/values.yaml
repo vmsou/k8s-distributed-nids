@@ -60,6 +60,8 @@ spark:
       http: ""
       protocol: ""
 
+    loadBalancerIP: ""
+
   master:
     daemonMemoryLimit: ""
 

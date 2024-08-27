@@ -12,23 +12,26 @@ spec:
   {{- if and .Values.spark.service.clusterIP (eq .Values.spark.service.type "ClusterIP") }}
   clusterIP: {{ .Values.spark.service.clusterIP }}
   {{- end }}
+  {{- if and (eq .Values.kafka.service.type "LoadBalancer") (not (empty .Values.kafka.service.loadBalancerIP)) }}
+  loadBalancerIP: {{ .Values.kafka.service.loadBalancerIP }}
+  {{- end }}
   selector: 
     {{- include "kafka.selectorLabels" . | nindent 4}}
     app.kubernetes.io/component: broker
   ports:
   - name: internal
     port: {{ .Values.kafka.service.ports.internal }}
-    {{- if and .Values.kafka.service.nodePorts.internal (eq .Values.kafka.service.type "NodePort") }}
+    {{- if and .Values.kafka.service.nodePorts.internal (or (eq .Values.kafka.service.type "NodePort") (eq .Values.kafka.service.type "LoadBalancer")) }}
     nodePort: {{ .Values.kafka.service.nodePorts.internal }}
     {{- end}}
   - name: kraft
     port: {{ .Values.kafka.service.ports.kraft }}
-    {{- if and .Values.kafka.service.nodePorts.kraft (eq .Values.kafka.service.type "NodePort") }}
+    {{- if and .Values.kafka.service.nodePorts.kraft (or (eq .Values.kafka.service.type "NodePort") (eq .Values.kafka.service.type "LoadBalancer")) }}
     nodePort: {{ .Values.kafka.service.nodePorts.kraft }}
     {{- end}}
   - name: controller
     port: {{ .Values.kafka.service.ports.controller }}
-    {{- if and .Values.kafka.service.nodePorts.controller (eq .Values.kafka.service.type "NodePort") }}
+    {{- if and .Values.kafka.service.nodePorts.controller (or (eq .Values.kafka.service.type "NodePort") (eq .Values.kafka.service.type "LoadBalancer")) }}
     nodePort: {{ .Values.kafka.service.nodePorts.controller }}
     {{- end}}
 ---

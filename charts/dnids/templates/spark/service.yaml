@@ -12,6 +12,9 @@ spec:
   {{- if and .Values.spark.service.clusterIP (eq .Values.spark.service.type "ClusterIP") }}
   clusterIP: {{ .Values.spark.service.clusterIP }}
   {{- end }}
+  {{- if and (eq .Values.spark.service.type "LoadBalancer") (not (empty .Values.spark.service.loadBalancerIP)) }}
+  loadBalancerIP: {{ .Values.spark.service.loadBalancerIP }}
+  {{- end }}
   selector: 
     {{- include "spark.selectorLabels" . | nindent 4}}
     app.kubernetes.io/component: master
@@ -20,16 +23,16 @@ spec:
     protocol: TCP
     port: {{ .Values.spark.service.ports.http }}
     targetPort: {{ .Values.spark.service.ports.http }}
-    {{- if and .Values.hdfs.service.nodePorts.http (eq .Values.hdfs.service.type "NodePort") }}
-    nodePort: {{ .Values.hdfs.service.nodePorts.http }}
+    {{- if and .Values.spark.service.nodePorts.http (or (eq .Values.spark.service.type "NodePort") (eq .Values.spark.service.type "LoadBalancer")) }}
+    nodePort: {{ .Values.spark.service.nodePorts.http }}
     {{- end}}
 
   - name: protocol
     protocol: TCP
     port: {{ .Values.spark.service.ports.protocol }}
     targetPort: {{ .Values.spark.service.ports.protocol }}
-    {{- if and .Values.hdfs.service.nodePorts.protocol (eq .Values.hdfs.service.type "NodePort") }}
-    nodePort: {{ .Values.hdfs.service.nodePorts.protocol }}
+    {{- if and .Values.spark.service.nodePorts.protocol (or (eq .Values.spark.service.type "NodePort") (eq .Values.spark.service.type "LoadBalancer")) }}
+    nodePort: {{ .Values.spark.service.nodePorts.protocol }}
     {{- end}}
 ---
 apiVersion: v1
