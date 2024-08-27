@@ -32,6 +32,12 @@ helm install dnids charts/dnids --set kafka.enabled=false
 helm upgrade dnids charts/dnids --set kafka.enabled=true
 ```
 
+### Scaling
+```
+helm upgrade dnids charts/dnids --set kafka.broker.replicas=3
+helm upgrade dnids charts/dnids --reuse-values --set spark.worker.replicas=3 --set hdfs.datanode.replicas=3
+```
+
 ### Port-Forward
 ```bash
 kubectl port-forward svc/hdfs-namenode-svc 9870:9870
