@@ -18,6 +18,7 @@ def parse_arguments():
     parent_parser.add_argument("-s", "--setup", help="Path to Setup Folder", required=True)
     parent_parser.add_argument("--schema", help="Path to Schema JSON", required=False)
     parent_parser.add_argument("-d", "--dataset", help="Path to Dataset", required=True)
+    parent_parser.add_argument("--partitions", help="Dataset repartitions (defaults to sparkContext.defaultParallelism * 2)", required=False, default=None, type=int)
     parent_parser.add_argument("-o", "--output", help="Path to Model Output")
 
     main_parser = argparse.ArgumentParser()
@@ -26,7 +27,7 @@ def parse_arguments():
     pipeline = subparser.add_parser("pipeline", help="Pipeline", parents=[parent_parser])
     
     cross_validator = subparser.add_parser("cross-validator", help="CrossValidator", parents=[parent_parser])
-    cross_validator.add_argument("-p", "--parallelism", help="Parallelism's Number", type=int, default=1)
+    cross_validator.add_argument("-p", "--parallelism", help="Parallelism's Number (defaults to sparkContext.defaultParallelism)", type=int, default=None)
     cross_validator.add_argument("-f", "--folds", help="Number of Folds. Must be over 1 fold", type=int, default=2)
 
     return main_parser.parse_args()
@@ -38,6 +39,8 @@ def create_session():
         .appName(name) \
         .config("spark.sql.debug.maxToStringFields", '100') \
         .getOrCreate()
+    # .config("spark.sql.autoBroadcastJoinThreshold", 209715200) \  # 200MB
+    
     return spark
 
 
@@ -51,6 +54,7 @@ def main():
     COMMAND = args.command
     SETUP_PATH = args.setup
     DATASET_PATH = args.dataset
+    NUM_PARTITIONS = args.partitions
     SCHEMA_PATH = args.schema
     OUTPUT_PATH = args.output
 
@@ -59,6 +63,7 @@ def main():
     print("SETUP_PATH:", SETUP_PATH)
     print("SCHEMA_PATH:", SCHEMA_PATH)
     print("DATASET_PATH:", DATASET_PATH)
+    print("NUM_PARTITIONS:", NUM_PARTITIONS)
     print("OUTPUT_PATH:", OUTPUT_PATH)
     print()
 
@@ -69,8 +74,12 @@ def main():
     t0 = time.time()
     if COMMAND == "cross-validator":
         if args.folds < 1: raise Exception(f"Folds must be >= 1, not: {args.folds}")
+        PARALLELISM = args.parallelism
         estimator: CrossValidator = CrossValidator.load(SETUP_PATH)
-        estimator = estimator.setNumFolds(args.folds).setParallelism(args.parallelism)
+        if PARALLELISM is None:
+            PARALLELISM = spark.sparkContext.defaultParallelism
+            print(f"Parallelism is set to None. Defaulting to {PARALLELISM}")
+        estimator = estimator.setNumFolds(args.folds).setParallelism(PARALLELISM)
     elif COMMAND == "pipeline":
         estimator: Pipeline = Pipeline.load(SETUP_PATH)
 
@@ -99,7 +108,17 @@ def main():
     print(f"OK. Loaded in {t1 - t0}s")
     print()
 
+    print(f"Partitioning {DATASET_PATH}...")
+    t0 = time.time()
+    if NUM_PARTITIONS is None:
+        NUM_PARTITIONS = spark.sparkContext.defaultParallelism * 2
+        print(f"Partition is set to None. Defaulting to {NUM_PARTITIONS}")
+
+    train_df = train_df.repartition(NUM_PARTITIONS)
+    t1 = time.time()
+    print(f"OK. Partitioned in {t1 - t0}s")
     print()
+
 
     print(" [MODEL] ".center(50, "-"))
     print("Training model...")
