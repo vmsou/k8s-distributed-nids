@@ -71,21 +71,11 @@ def main():
         if args.folds < 1: raise Exception(f"Folds must be >= 1, not: {args.folds}")
         estimator: CrossValidator = CrossValidator.load(SETUP_PATH)
         estimator = estimator.setNumFolds(args.folds).setParallelism(args.parallelism)
-
-        target_col = model.stages[-1].getLabelCol()
-        features_col = model.stages[-1].getFeaturesCol()
-        prediction_col = model.stages[-1].getPredictionCol()
     elif COMMAND == "pipeline":
         estimator: Pipeline = Pipeline.load(SETUP_PATH)
-        target_col = model.stages[-1].getLabelCol()
-        features_col = model.stages[-1].getFeaturesCol()
-        prediction_col = model.stages[-1].getPredictionCol()
+
     t1 = time.time()
     print(f"OK. Loaded in {t1 - t0}s")
-        
-    print("TARGET:", target_col)
-    print("FEATURES:", features_col)
-    print("PREDICTIONS:", prediction_col)
     print()
 
     schema = None
