@@ -22,7 +22,7 @@ spec:
   - name: http
     protocol: TCP
     port: {{ .Values.spark.service.ports.http }}
-    targetPort: {{ .Values.spark.service.ports.http }}
+    targetPort: http
     {{- if and .Values.spark.service.nodePorts.http (or (eq .Values.spark.service.type "NodePort") (eq .Values.spark.service.type "LoadBalancer")) }}
     nodePort: {{ .Values.spark.service.nodePorts.http }}
     {{- end}}
@@ -30,7 +30,7 @@ spec:
   - name: protocol
     protocol: TCP
     port: {{ .Values.spark.service.ports.protocol }}
-    targetPort: {{ .Values.spark.service.ports.protocol }}
+    targetPort: protocol
     {{- if and .Values.spark.service.nodePorts.protocol (or (eq .Values.spark.service.type "NodePort") (eq .Values.spark.service.type "LoadBalancer")) }}
     nodePort: {{ .Values.spark.service.nodePorts.protocol }}
     {{- end}}

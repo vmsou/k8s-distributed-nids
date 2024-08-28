@@ -47,6 +47,14 @@ spec:
             subPath: hdfs-site.xml
           - mountPath: {{ .Values.hdfs.namenode.dir }}
             name: hdfs-namenode-data
+        
+        ports:
+        - name: http
+          protocol: TCP
+          containerPort: {{ .Values.hdfs.namenode.containerPorts.http }}
+        - name: protocol
+          protocol: TCP
+          containerPort: {{ .Values.hdfs.namenode.containerPorts.protocol }}
             
         command: ["/bin/sh"]
         args: ["-c", "if [ ! -f {{ .Values.hdfs.namenode.dir }}/current/VERSION ]; then hdfs namenode -format -force; fi && exec hdfs namenode"]
@@ -120,8 +128,8 @@ spec:
             name: hdfs-configmap
             subPath: hdfs-site.xml
           - mountPath: {{ .Values.hdfs.datanode.dir }}
-            name: hdfs-datanode-data
-            
+            name: hdfs-datanode-data         
+
         command: ["hdfs", "datanode"]
 
       {{- if .Values.affinity.enabled }}

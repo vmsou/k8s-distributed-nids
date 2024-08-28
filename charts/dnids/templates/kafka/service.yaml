@@ -21,16 +21,19 @@ spec:
   ports:
   - name: internal
     port: {{ .Values.kafka.service.ports.internal }}
+    targetPort: protocol
     {{- if and .Values.kafka.service.nodePorts.internal (or (eq .Values.kafka.service.type "NodePort") (eq .Values.kafka.service.type "LoadBalancer")) }}
     nodePort: {{ .Values.kafka.service.nodePorts.internal }}
     {{- end}}
   - name: kraft
     port: {{ .Values.kafka.service.ports.kraft }}
+    targetPort: kraft
     {{- if and .Values.kafka.service.nodePorts.kraft (or (eq .Values.kafka.service.type "NodePort") (eq .Values.kafka.service.type "LoadBalancer")) }}
     nodePort: {{ .Values.kafka.service.nodePorts.kraft }}
     {{- end}}
   - name: controller
     port: {{ .Values.kafka.service.ports.controller }}
+    targetPort: controller
     {{- if and .Values.kafka.service.nodePorts.controller (or (eq .Values.kafka.service.type "NodePort") (eq .Values.kafka.service.type "LoadBalancer")) }}
     nodePort: {{ .Values.kafka.service.nodePorts.controller }}
     {{- end}}

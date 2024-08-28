@@ -26,16 +26,20 @@ hdfs:
 
   namenode:
     dir: "/hadoop/dfs/namenode"
-    resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "1", "memory": "1024Mi"}}
+    resources: {"requests": {"cpu": "0.5", "memory": "1024Mi"}, "limits": {"cpu": "1", "memory": "3072Mi"}}
 
     persistence:
       size: 2Gi
+
+    containerPorts:
+      http: 9870
+      protocol: 8020
 
   datanode:
     dir: "/hadoop/dfs/datanode"
     replicas: 1
 
-    resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "1", "memory": "768Mi"}}
+    resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "1", "memory": "1024Mi"}}
 
     persistence:
       size: 10Gi
@@ -65,14 +69,21 @@ spark:
   master:
     daemonMemoryLimit: ""
 
-    resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "1.0", "memory": "1024Mi"}}
+    resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "1.0", "memory": "2048Mi"}}
+
+    containerPorts:
+      http: 8080
+      protocol: 7077
 
   worker:
     replicas: 1
     daemonMemoryLimit: ""
     memoryLimit: ""
 
-    resources: {"requests": {"cpu": "1.0", "memory": "2048Mi"}, "limits": {"cpu": "2", "memory": "3072Mi"}}
+    resources: {"requests": {"cpu": "1.0", "memory": "2048Mi"}, "limits": {"cpu": "2.0", "memory": "3072Mi"}}
+
+    containerPorts:
+      http: 8080
 
 kafka:
   enabled: true
@@ -104,10 +115,15 @@ kafka:
     KRAFT_REPLICATION_FACTOR: "1"
     DEFAULT_REPLICATION_FACTOR: "1"
 
-    resources: {"requests": {"cpu": "0.5", "memory": "256Mi"}, "limits": {"cpu": "0.75", "memory": "768Mi"}}
+    resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "0.75", "memory": "1024Mi"}}
 
     persistence:
       size: 2Gi
+
+    containerPorts:
+      internal: 9092
+      kraft: 9093
+      controller: 9094
 
 # DEFAULT
 magePullSecrets: []

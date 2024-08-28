@@ -46,6 +46,14 @@ spec:
             name: spark-configmap
             subPath: log4j2.properties
 
+        ports:
+        - name: http
+          protocol: TCP
+          containerPort: {{ .Values.spark.master.containerPorts.http }}
+        - name: protocol
+          protocol: TCP
+          containerPort: {{ .Values.spark.master.containerPorts.protocol }}
+
       {{- if .Values.affinity.enabled }}
       affinity:
         podAntiAffinity:
@@ -108,6 +116,11 @@ spec:
           - mountPath: /opt/bitnami/spark/conf/log4j2.properties
             name: spark-configmap
             subPath: log4j2.properties
+
+        ports:
+        - name: http
+          protocol: TCP
+          containerPort: {{ .Values.spark.worker.containerPorts.http }}
 
       {{- if .Values.affinity.enabled }}
       affinity:

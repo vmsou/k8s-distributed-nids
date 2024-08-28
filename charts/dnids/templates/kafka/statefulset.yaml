@@ -72,6 +72,14 @@ spec:
           - mountPath: /bitnami/kafka/
             name: kafka-broker-data
 
+        ports:
+        - name: internal
+          containerPort: {{ .Values.kafka.broker.containerPorts.internal }}
+        - name: kraft
+          containerPort: {{ .Values.kafka.broker.containerPorts.kraft }}
+        - name: controller
+          containerPort: {{ .Values.kafka.broker.containerPorts.controller }}
+
         command: ["/bin/bash", "-c"]
         args: 
           - |
