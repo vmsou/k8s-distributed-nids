@@ -19,7 +19,9 @@ def parse_arguments():
     parent_parser.add_argument("-s", "--setup", help="Path to Setup Folder", required=True)
     parent_parser.add_argument("--schema", help="Path to Schema JSON", required=False)
     parent_parser.add_argument("-d", "--dataset", help="Path to Dataset", required=True)
+    parent_parser.add_argument("--train-ratio", type=float, help="Ratio for training (0.0 to 1.0)", default=1.0)
     parent_parser.add_argument("--partitions", help="Dataset repartitions (defaults to sparkContext.defaultParallelism * 2)", required=False, default=None, type=int)
+    parent_parser.add_argument("--seed", type=float, help="Seed Number", default=42)
     parent_parser.add_argument("-o", "--output", help="Path to Model Output")
 
     main_parser = argparse.ArgumentParser()
@@ -56,15 +58,18 @@ def main():
     COMMAND = args.command
     SETUP_PATH = args.setup
     DATASET_PATH = args.dataset
+    TRAIN_RATIO = args.train_ratio
     NUM_PARTITIONS = args.partitions
     SCHEMA_PATH = args.schema
     OUTPUT_PATH = args.output
+    SEED = args.seed
 
     print(" [CONF] ".center(50, "-"))
     print("COMMAND:", COMMAND)
     print("SETUP_PATH:", SETUP_PATH)
     print("SCHEMA_PATH:", SCHEMA_PATH)
     print("DATASET_PATH:", DATASET_PATH)
+    print("TRAIN_RATIO:", TRAIN_RATIO)
     print("NUM_PARTITIONS:", NUM_PARTITIONS)
     print("OUTPUT_PATH:", OUTPUT_PATH)
     print()
@@ -106,6 +111,8 @@ def main():
         estimator = estimator.setNumFolds(FOLDS).setParallelism(PARALLELISM)
     elif COMMAND == "pipeline":
         estimator: Pipeline = Pipeline.load(SETUP_PATH)
+        LABEL_COL = estimator.getStages()[-1].getLabelCol()
+        PREDICTION_COL = estimator.getStages()[-1].getPredictionCol()
 
     t1 = time.time()
     print(f"OK. Loaded in {t1 - t0}s")
@@ -130,6 +137,10 @@ def main():
     train_df = spark.read.schema(schema).parquet(DATASET_PATH) if schema else spark.read.parquet(DATASET_PATH)
     t1 = time.time()
     print(f"OK. Loaded in {t1 - t0}s")
+    print()
+
+    print(f"Splitting data into {TRAIN_RATIO}")
+    train_df = train_df.sample(TRAIN_RATIO, seed=SEED)
     print()
 
     print(f"Partitioning {DATASET_PATH}...")
