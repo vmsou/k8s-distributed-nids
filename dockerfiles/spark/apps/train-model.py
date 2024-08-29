@@ -8,6 +8,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType
 from pyspark.ml import Pipeline
 from pyspark.ml.tuning import CrossValidator
+from pyspark.ml.evaluation import Evaluator, MulticlassClassificationEvaluator, BinaryClassificationEvaluator
 
 Estimator_t = CrossValidator | Pipeline
 
@@ -27,6 +28,7 @@ def parse_arguments():
     pipeline = subparser.add_parser("pipeline", help="Pipeline", parents=[parent_parser])
     
     cross_validator = subparser.add_parser("cross-validator", help="CrossValidator", parents=[parent_parser])
+    cross_validator.add_argument("-e", "--evaluator", help="Path to Evaluator Folder", required=False, default=None)
     cross_validator.add_argument("-p", "--parallelism", help="Parallelism's Number (defaults to sparkContext.defaultParallelism)", type=int, default=None)
     cross_validator.add_argument("-f", "--folds", help="Number of Folds. Must be over 1 fold", type=int, default=2)
 
@@ -75,11 +77,33 @@ def main():
     if COMMAND == "cross-validator":
         if args.folds < 1: raise Exception(f"Folds must be >= 1, not: {args.folds}")
         PARALLELISM = args.parallelism
+        EVALUATOR_PATH = args.evaluator
+        FOLDS = args.folds
+
         estimator: CrossValidator = CrossValidator.load(SETUP_PATH)
         if PARALLELISM is None:
             PARALLELISM = spark.sparkContext.defaultParallelism
             print(f"Parallelism is set to None. Defaulting to {PARALLELISM}")
-        estimator = estimator.setNumFolds(args.folds).setParallelism(PARALLELISM)
+
+        if EVALUATOR_PATH is not None:
+            print(f"Loading {EVALUATOR_PATH}")
+            LABEL_COL = estimator.getEstimator().getStages()[-1].getLabelCol()
+            PREDICTION_COL = estimator.getEstimator().getStages()[-1].getPredictionCol()
+            print(f"{LABEL_COL=}")
+            print(f"{PREDICTION_COL=}")
+
+            try:
+                evaluator: Evaluator = MulticlassClassificationEvaluator.load(EVALUATOR_PATH)
+                evaluator.setLabelCol(LABEL_COL)
+                evaluator.setPredictionCol(PREDICTION_COL)
+            except:
+                evaluator: Evaluator = BinaryClassificationEvaluator.load(EVALUATOR_PATH)
+                evaluator.setLabelCol(LABEL_COL)
+
+            estimator.setEvaluator(evaluator)
+            print("Done.")
+
+        estimator = estimator.setNumFolds(FOLDS).setParallelism(PARALLELISM)
     elif COMMAND == "pipeline":
         estimator: Pipeline = Pipeline.load(SETUP_PATH)
 
