@@ -4,6 +4,8 @@ import os
 import sys
 import time
 
+
+
 import pyspark.sql.functions as F
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.types import StructType
@@ -63,18 +65,6 @@ def show_confusion_matrix2(pred_labels: DataFrame, target: str):
 
 
 def show_binary_metrics(predictions, target_col, prediction_col):
-    evaluator = BinaryClassificationEvaluator(labelCol=target_col)
-
-    # areaUnderROC (balanced) | areaUnderPR (imbalanced)
-    metrics = [
-        "areaUnderROC",
-        "areaUnderPR",
-    ]
-
-    for metric in metrics:
-        score = evaluator.evaluate(predictions, {evaluator.metricName: metric})
-        print(f"{metric}: {score}")
-
     t0 = predictions[target_col] == 0
     t1 = predictions[target_col] == 1
     p0 = predictions[prediction_col] == 0
@@ -85,7 +75,6 @@ def show_binary_metrics(predictions, target_col, prediction_col):
     fp = predictions.filter(t0 & p1).count()
     fn = predictions.filter(t1 & p0).count()
     
-    print()
     print("Confusion Matrix:")
     print(f"{tp=}")
     print(f"{tn=}")
@@ -99,16 +88,27 @@ def show_binary_metrics(predictions, target_col, prediction_col):
     print()
 
     accuracy = (tp + tn) / (tp + tn + fp + fn)
-    print(f"Accuracy: {accuracy}")
-
     precision = tp / (tp + fp) if (tp + fp) != 0 else 0  
-    print(f"Precision: {precision}")
-
     recall = tp / (tp + fn) if (tp + fn) != 0 else 0.0  
-    print(f"Recall: {recall}")
-
     f1_measure = 2 * (precision * recall) / (precision + recall) if (precision + recall) != 0 else 0.0  
+
+    print(f"Accuracy: {accuracy}")
+    print(f"Precision: {precision}")
+    print(f"Recall: {recall}")
     print(f"F1 measure: {f1_measure}")
+
+    print()
+    evaluator = BinaryClassificationEvaluator(labelCol=target_col)
+
+    # areaUnderROC (balanced) | areaUnderPR (imbalanced)
+    metrics = [
+        "areaUnderROC",
+        "areaUnderPR",
+    ]
+
+    for metric in metrics:
+        score = evaluator.evaluate(predictions, {evaluator.metricName: metric})
+        print(f"{metric}: {score}")
 
 
 def show_multiclass_metrics(predictions, target_col, metricLabel=1.0):
