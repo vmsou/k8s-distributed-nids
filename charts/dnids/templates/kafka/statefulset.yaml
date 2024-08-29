@@ -113,7 +113,4 @@ spec:
         app.kubernetes.io/component: broker
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      resources:
-        requests:
-          storage: {{ .Values.kafka.broker.persistence.size }}
 {{- end }}
