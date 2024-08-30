@@ -30,7 +30,8 @@ def parse_arguments():
     pipeline = subparser.add_parser("pipeline", help="Pipeline", parents=[parent_parser])
     
     cross_validator = subparser.add_parser("cross-validator", help="CrossValidator", parents=[parent_parser])
-    cross_validator.add_argument("-e", "--evaluator", help="Path to Evaluator Folder", required=False, default=None)
+    cross_validator.add_argument("--metric", help="Metric name", required=False, default="accuracy", choices=["areaUnderROC", "areaUnderPR", "f1", "accuracy", "weightedPrecision", "weightedRecall", "weightedTruePositiveRate", "weightedFalsePositiveRate", "weightedFMeasure", "truePositiveRateByLabel", "falsePositiveRateByLabel", "precisionByLabel", "recallByLabel", "fMeasureByLabel", "logLoss", "hammingLoss"])
+    cross_validator.add_argument("--metric-label", help="Metric label", required=False, default=1.0, type=float)
     cross_validator.add_argument("-p", "--parallelism", help="Parallelism's Number (defaults to sparkContext.defaultParallelism)", type=int, default=None)
     cross_validator.add_argument("-f", "--folds", help="Number of Folds. Must be over 1 fold", type=int, default=2)
 
@@ -81,8 +82,9 @@ def main():
     t0 = time.time()
     if COMMAND == "cross-validator":
         if args.folds < 1: raise Exception(f"Folds must be >= 1, not: {args.folds}")
+        METRIC= args.metric
+        METRIC_LABEL = args.metric_label
         PARALLELISM = args.parallelism
-        EVALUATOR_PATH = args.evaluator
         FOLDS = args.folds
 
         estimator: CrossValidator = CrossValidator.load(SETUP_PATH)
@@ -90,25 +92,21 @@ def main():
             PARALLELISM = spark.sparkContext.defaultParallelism
             print(f"Parallelism is set to None. Defaulting to {PARALLELISM}")
 
-        if EVALUATOR_PATH is not None:
-            print(f"Loading {EVALUATOR_PATH}")
-            LABEL_COL = estimator.getEstimator().getStages()[-1].getLabelCol()
-            PREDICTION_COL = estimator.getEstimator().getStages()[-1].getPredictionCol()
-            print(f"{LABEL_COL=}")
-            print(f"{PREDICTION_COL=}")
+        print(f"Setting evaluator...")
+        LABEL_COL = estimator.getEstimator().getStages()[-1].getLabelCol()
+        PREDICTION_COL = estimator.getEstimator().getStages()[-1].getPredictionCol()
+        print(f"{METRIC=}")
+        print(f"{METRIC_LABEL=}")
+        print(f"{LABEL_COL=}")
+        print(f"{PREDICTION_COL=}")
 
-            try:
-                evaluator: Evaluator = MulticlassClassificationEvaluator.load(EVALUATOR_PATH)
-                evaluator.setLabelCol(LABEL_COL)
-                evaluator.setPredictionCol(PREDICTION_COL)
-            except:
-                evaluator: Evaluator = BinaryClassificationEvaluator.load(EVALUATOR_PATH)
-                evaluator.setLabelCol(LABEL_COL)
+        if METRIC in ("areaUnderROC", "areaUnderPR"):
+            evaluator: Evaluator = BinaryClassificationEvaluator(labelCol=LABEL_COL, metricName=METRIC)
+        else:
+            evaluator: Evaluator = MulticlassClassificationEvaluator(labelCol=LABEL_COL, predictionCol=PREDICTION_COL, metricName=METRIC, metricLabel=METRIC_LABEL)
 
-            estimator.setEvaluator(evaluator)
-            print("Done.")
-
-        estimator = estimator.setNumFolds(FOLDS).setParallelism(PARALLELISM)
+        estimator = estimator.setNumFolds(FOLDS).setParallelism(PARALLELISM).setEvaluator(evaluator)
+        print("Done.")
     elif COMMAND == "pipeline":
         estimator: Pipeline = Pipeline.load(SETUP_PATH)
         LABEL_COL = estimator.getStages()[-1].getLabelCol()
