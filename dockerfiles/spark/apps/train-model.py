@@ -66,13 +66,13 @@ def main():
     SEED = args.seed
 
     print(" [CONF] ".center(50, "-"))
-    print("COMMAND:", COMMAND)
-    print("SETUP_PATH:", SETUP_PATH)
-    print("SCHEMA_PATH:", SCHEMA_PATH)
-    print("DATASET_PATH:", DATASET_PATH)
-    print("TRAIN_RATIO:", TRAIN_RATIO)
-    print("NUM_PARTITIONS:", NUM_PARTITIONS)
-    print("OUTPUT_PATH:", OUTPUT_PATH)
+    print(f"{COMMAND=}")
+    print(f"{SETUP_PATH=}")
+    print(f"{SCHEMA_PATH=}")
+    print(f"{DATASET_PATH=}")
+    print(f"{TRAIN_RATIO=}")
+    print(f"{NUM_PARTITIONS=}")
+    print(f"{OUTPUT_PATH=}")
     print()
 
     spark = create_session()
@@ -113,7 +113,7 @@ def main():
         PREDICTION_COL = estimator.getStages()[-1].getPredictionCol()
 
     t1 = time.time()
-    print(f"OK. Loaded in {t1 - t0}s")
+    print(f"OK. Done in {t1 - t0}s")
     print()
 
     schema = None
@@ -134,7 +134,7 @@ def main():
     t0 = time.time()
     train_df = spark.read.schema(schema).parquet(DATASET_PATH) if schema else spark.read.parquet(DATASET_PATH)
     t1 = time.time()
-    print(f"OK. Loaded in {t1 - t0}s")
+    print(f"OK. Done in {t1 - t0}s")
     print()
 
     print(f"Splitting data into {TRAIN_RATIO}")
@@ -149,7 +149,7 @@ def main():
 
     train_df = train_df.repartition(NUM_PARTITIONS)
     t1 = time.time()
-    print(f"OK. Partitioned in {t1 - t0}s")
+    print(f"OK. Done in {t1 - t0}s")
     print()
 
 
@@ -159,7 +159,7 @@ def main():
     model: Estimator_t = estimator.fit(train_df)
     t1 = time.time()
     if COMMAND == "cross-validator": model = model.bestModel
-    print(f"OK. Trained in {t1 - t0}s")
+    print(f"OK. Done in {t1 - t0}s")
     print()
     print(model.stages[-1])
     print()
