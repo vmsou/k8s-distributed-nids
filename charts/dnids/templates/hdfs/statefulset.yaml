@@ -80,6 +80,7 @@ spec:
       resources:
         requests:
           storage: {{ .Values.hdfs.namenode.persistence.size }}
+      storageClassName: {{ .Values.hdfs.namenode.persistence.storageClassName }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -153,4 +154,5 @@ spec:
       resources:
         requests:
           storage: {{ .Values.hdfs.datanode.persistence.size }}
+      storageClassName: {{ .Values.hdfs.datanode.persistence.storageClassName }}
 {{- end }}

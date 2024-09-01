@@ -28,7 +28,8 @@ hdfs:
     dir: "/hadoop/dfs/namenode"
     resources: {"requests": {"cpu": "0.5", "memory": "1024Mi"}, "limits": {"cpu": "1", "memory": "2048Mi"}}
     persistence:
-      size: 2g
+      storageClassName: standard
+      size: 2G
 
     containerPorts:
       http: 9870
@@ -40,7 +41,8 @@ hdfs:
 
     resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "1", "memory": "1024Mi"}}
     persistence:
-      size: 10g
+      storageClassName: standard
+      size: 10G
 
 spark:
   enabled: true
@@ -118,7 +120,8 @@ kafka:
 
     resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "0.75", "memory": "1024Mi"}}
     persistence:
-      size: 2g
+      storageClassName: standard
+      size: 2G
 
     containerPorts:
       internal: 9092

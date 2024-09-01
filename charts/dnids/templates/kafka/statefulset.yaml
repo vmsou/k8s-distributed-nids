@@ -116,4 +116,5 @@ spec:
       resources:
         requests:
           storage: {{ .Values.kafka.broker.persistence.size }}
+      storageClassName: {{ .Values.kafka.broker.persistence.storageClassName }}
 {{- end }}
