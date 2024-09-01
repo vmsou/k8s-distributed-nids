@@ -77,6 +77,9 @@ spec:
         app.kubernetes.io/component: namenode
     spec:
       accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: {{ .Values.hdfs.namenode.persistence.size }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -147,4 +150,7 @@ spec:
         app.kubernetes.io/component: datanode
     spec:
       accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: {{ .Values.hdfs.datanode.persistence.size }}
 {{- end }}

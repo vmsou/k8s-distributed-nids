@@ -27,6 +27,8 @@ hdfs:
   namenode:
     dir: "/hadoop/dfs/namenode"
     resources: {"requests": {"cpu": "0.5", "memory": "1024Mi"}, "limits": {"cpu": "1", "memory": "2048Mi"}}
+    persistence:
+      size: 2g
 
     containerPorts:
       http: 9870
@@ -37,6 +39,8 @@ hdfs:
     replicas: 1
 
     resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "1", "memory": "1024Mi"}}
+    persistence:
+      size: 10g
 
 spark:
   enabled: true
@@ -113,6 +117,8 @@ kafka:
     DEFAULT_REPLICATION_FACTOR: "1"
 
     resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "0.75", "memory": "1024Mi"}}
+    persistence:
+      size: 2g
 
     containerPorts:
       internal: 9092
