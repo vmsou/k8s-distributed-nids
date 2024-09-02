@@ -21,6 +21,19 @@ spec:
         {{- include "kafka.labels" . | nindent 8}}
         app.kubernetes.io/component: broker
     spec:
+      volumes:
+        - name: data
+          emptyDir: {}
+#        - name: data
+#          persistentVolumeClaim:
+#            claimName: ""
+      initContainers:
+        - name: init-chown
+          image: busybox
+          command: ['sh', '-c', 'chown -R 1001:1001 /bitnami/kafka && chmod -R 755 /bitnami/kafka']
+          volumeMounts:
+          - name: data
+            mountPath: /bitnami/kafka
       containers:
       - name: kafka-broker
         image: {{ include "kafka.image" . }}
@@ -60,6 +73,10 @@ spec:
         resources: {{- toYaml .Values.kafka.broker.resources | nindent 10 }}
         {{- end}}
 
+        volumeMounts:
+          - name: data
+            mountPath: /bitnami/kafka
+
         ports:
         - name: internal
           containerPort: {{ .Values.kafka.broker.containerPorts.internal }}
@@ -93,4 +110,19 @@ spec:
               matchExpressions: [{key: 'app.kubernetes.io/name', operator: In, values: [ {{ include "kafka.name" . }} ]}]
             topologyKey: "kubernetes.io/hostname"
       {{- end }}
+
+  volumeClaimTemplates:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: data
+      namespace: {{ .Release.Namespace | quote }}
+      labels: 
+        {{- include "kafka.labels" . | nindent 8}}
+        app.kubernetes.io/component: broker
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 5G
 {{- end }}
