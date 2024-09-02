@@ -21,14 +21,6 @@ spec:
         {{- include "kafka.labels" . | nindent 8}}
         app.kubernetes.io/component: broker
     spec:
-      initContainers:
-      - name: init-chown
-        image: busybox
-        command: ['sh', '-c', 'chown -R 1001:1001 /bitnami/kafka/', '&&', 'chmod -R 755 /bitnami/kafka/']
-        volumeMounts:
-        - mountPath: /bitnami/kafka/
-          name: kafka-broker-data
-
       containers:
       - name: kafka-broker
         image: {{ include "kafka.image" . }}
@@ -68,10 +60,6 @@ spec:
         resources: {{- toYaml .Values.kafka.broker.resources | nindent 10 }}
         {{- end}}
 
-        volumeMounts:
-          - mountPath: /bitnami/kafka/
-            name: kafka-broker-data
-
         ports:
         - name: internal
           containerPort: {{ .Values.kafka.broker.containerPorts.internal }}
@@ -93,6 +81,8 @@ spec:
             done
             export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS="${voters%,}"
 
+            echo $KAFKA_CFG_CONTROLLER_QUORUM_VOTERS
+
             exec /opt/bitnami/scripts/kafka/entrypoint.sh /opt/bitnami/scripts/kafka/run.sh
 
       {{- if .Values.affinity.enabled }}
@@ -103,18 +93,4 @@ spec:
               matchExpressions: [{key: 'app.kubernetes.io/name', operator: In, values: [ {{ include "kafka.name" . }} ]}]
             topologyKey: "kubernetes.io/hostname"
       {{- end }}
-
-  volumeClaimTemplates:
-  - metadata:
-      name: kafka-broker-data
-      namespace: {{ .Release.Namespace | quote }}
-      labels: 
-        {{- include "kafka.labels" . | nindent 8}}
-        app.kubernetes.io/component: broker
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      resources:
-        requests:
-          storage: {{ .Values.kafka.broker.persistence.size }}
-      storageClassName: {{ .Values.kafka.broker.persistence.storageClassName }}
 {{- end }}
