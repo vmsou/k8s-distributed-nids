@@ -51,12 +51,12 @@ data:
 
     <property>
         <name>dfs.namenode.name.dir</name>
-        <value>{{ .Values.hdfs.namenode.dir }}</value>
+        <value>{{ .Values.hdfs.namenode.mountPath }}</value>
     </property>
 
     <property>
         <name>dfs.datanode.data.dir</name>
-        <value>{{ .Values.hdfs.datanode.dir }}</value>
+        <value>{{ .Values.hdfs.datanode.mountPath }}</value>
     </property>
     
     </configuration>
