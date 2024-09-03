@@ -24,13 +24,15 @@ spec:
         - name: hdfs-configmap
           configMap:
             name: hdfs-configmap
+        - name: data
+          emptyDir: {}
       initContainers:
         - name: init-chown
           image: busybox
-          command: ['sh', '-c', 'chown -R 1000:1000 {{ .Values.hdfs.namenode.dir }} && chmod -R 755 {{ .Values.hdfs.namenode.dir }}']
+          command: ['sh', '-c', 'chown -R 1000:1000 {{ .Values.hdfs.namenode.mountPath }} && chmod -R 755 {{ .Values.hdfs.namenode.mountPath }}']
           volumeMounts:
-            - name: hdfs-namenode-data
-              mountPath: {{ .Values.hdfs.namenode.dir }}
+            - name: data
+              mountPath: {{ .Values.hdfs.namenode.mountPath }}
       containers:
       - name: hdfs-namenode
         image: {{ include "hdfs.image" . }}
@@ -45,8 +47,8 @@ spec:
           - mountPath: /opt/hadoop/etc/hadoop/hdfs-site.xml
             name: hdfs-configmap
             subPath: hdfs-site.xml
-          - mountPath: {{ .Values.hdfs.namenode.dir }}
-            name: hdfs-namenode-data
+          - name: data
+            mountPath: {{ .Values.hdfs.namenode.mountPath }}
         
         ports:
         - name: http
@@ -57,7 +59,7 @@ spec:
           containerPort: {{ .Values.hdfs.namenode.containerPorts.protocol }}
             
         command: ["/bin/sh"]
-        args: ["-c", "if [ ! -f {{ .Values.hdfs.namenode.dir }}/current/VERSION ]; then hdfs namenode -format -force; fi && exec hdfs namenode"]
+        args: ["-c", "if [ ! -f {{ .Values.hdfs.namenode.mountPath }}/current/VERSION ]; then hdfs namenode -format -force; fi && exec hdfs namenode"]
 
       {{- if .Values.affinity.enabled }}
       affinity:
@@ -69,8 +71,10 @@ spec:
       {{- end }}
 
   volumeClaimTemplates:
-  - metadata:
-      name: hdfs-namenode-data
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: data
       namespace: {{ .Release.Namespace | quote }}
       labels: 
         {{- include "hdfs.labels" . | nindent 8}}
@@ -80,7 +84,6 @@ spec:
       resources:
         requests:
           storage: {{ .Values.hdfs.namenode.persistence.size }}
-      storageClassName: {{ .Values.hdfs.namenode.persistence.storageClassName }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -107,13 +110,15 @@ spec:
         - name: hdfs-configmap
           configMap:
             name: hdfs-configmap
+        - name: data
+          emptyDir: {}
       initContainers:
         - name: init-chown
           image: busybox
-          command: ['sh', '-c', 'chown -R 1000:1000 {{ .Values.hdfs.datanode.dir }} && chmod -R 755 {{ .Values.hdfs.datanode.dir }}']
+          command: ['sh', '-c', 'chown -R 1000:1000 {{ .Values.hdfs.datanode.mountPath }} && chmod -R 755 {{ .Values.hdfs.datanode.mountPath }}']
           volumeMounts:
-          - name: hdfs-datanode-data
-            mountPath: {{ .Values.hdfs.datanode.dir }}
+          - name: data
+            mountPath: {{ .Values.hdfs.datanode.mountPath }}
       containers:
       - name: hdfs-datanode
         image: {{ include "hdfs.image" . }}
@@ -128,8 +133,8 @@ spec:
           - mountPath: /opt/hadoop/etc/hadoop/hdfs-site.xml
             name: hdfs-configmap
             subPath: hdfs-site.xml
-          - mountPath: {{ .Values.hdfs.datanode.dir }}
-            name: hdfs-datanode-data         
+          - name: data
+            mountPath: {{ .Values.hdfs.datanode.mountPath }}
 
         command: ["hdfs", "datanode"]
 
@@ -143,8 +148,10 @@ spec:
       {{- end }}
 
   volumeClaimTemplates:
-  - metadata:
-      name: hdfs-datanode-data
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: data
       namespace: {{ .Release.Namespace | quote }}
       labels: 
         {{- include "hdfs.labels" . | nindent 8}}
@@ -154,5 +161,4 @@ spec:
       resources:
         requests:
           storage: {{ .Values.hdfs.datanode.persistence.size }}
-      storageClassName: {{ .Values.hdfs.datanode.persistence.storageClassName }}
 {{- end }}

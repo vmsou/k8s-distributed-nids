@@ -25,10 +25,9 @@ hdfs:
       protocol: ""
 
   namenode:
-    dir: "/hadoop/dfs/namenode"
+    mountPath: "/hadoop/dfs/namenode"
     resources: {"requests": {"cpu": "0.5", "memory": "1024Mi"}, "limits": {"cpu": "1", "memory": "2048Mi"}}
     persistence:
-      storageClassName: standard
       size: 2G
 
     containerPorts:
@@ -36,12 +35,11 @@ hdfs:
       protocol: 8020
 
   datanode:
-    dir: "/hadoop/dfs/datanode"
+    mountPath: "/hadoop/dfs/datanode"
     replicas: 1
 
     resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "1", "memory": "1024Mi"}}
     persistence:
-      storageClassName: standard
       size: 10G
 
 spark:
@@ -83,7 +81,7 @@ spark:
 
     # resources: {"requests": {"cpu": "1.0", "memory": "2048Mi"}, "limits": {"cpu": "2.0", "memory": "3072Mi"}}
     # resources: {"requests": {"cpu": "1.0", "memory": "3072Mi", "ephemeral-storage": "50Mi"}, "limits": {"cpu": "4.0", "memory": "12288Mi", "ephemeral-storage": "16Gi"}}
-    resources: {"requests": {"cpu": "1.0", "memory": "3072Mi"}, "limits": {"cpu": "5.0", "memory": "12288Mi"}}
+    resources: {"requests": {"cpu": "1.0", "memory": "3072Mi"}, "limits": {"cpu": "4.0", "memory": "12288Mi"}}
 
     containerPorts:
       http: 8080
@@ -118,9 +116,8 @@ kafka:
     KRAFT_REPLICATION_FACTOR: "1"
     DEFAULT_REPLICATION_FACTOR: "1"
 
-    resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "0.75", "memory": "1024Mi"}}
+    resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "1.0", "memory": "2024Mi"}}
     persistence:
-      storageClassName: standard
       size: 2G
 
     containerPorts:

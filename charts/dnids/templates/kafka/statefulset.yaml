@@ -24,9 +24,6 @@ spec:
       volumes:
         - name: data
           emptyDir: {}
-#        - name: data
-#          persistentVolumeClaim:
-#            claimName: ""
       initContainers:
         - name: init-chown
           image: busybox
