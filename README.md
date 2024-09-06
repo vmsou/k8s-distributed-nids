@@ -14,13 +14,38 @@ It is recommended to use a Linux environment for better compatibility and perfor
 - [Kubernetes](https://kubernetes.io/)
 - [Helm](https://helm.sh/)
 - [Minikube (Optional)](https://minikube.sigs.k8s.io/)
+- [Spark](https://spark.apache.org/)
+- [HDFS](https://hadoop.apache.org/)
+- [Kafka](https://kafka.apache.org/)
 
 ### Setting the Environment (with Minikube)
 ```bash
 minikube start --nodes 1 --cpus 7 --memory 7g --disk-size 30g --driver hyperv --profile dnids
 ```
 
-### Deploy (with Minikube)
+### Storage (without Minikube)
+Create your own local path storageclass using rancher/local-path-provisioner
+```bash
+kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
+```
+
+## Resources
+Set resources values found at values.yaml according to your own environment
+```yaml
+hdfs:
+    ...
+    namenode:
+        ...
+        resources: {"requests": {"cpu": "0.5", "memory": "1024Mi"}, "limits": {"cpu": "1", "memory": "2048Mi"}}
+    ...
+spark:
+    ...
+    worker:
+        ...
+        resources: {"requests": {"cpu": "0.5", "memory": "1024Mi"}, "limits": {"cpu": "2.0", "memory": "2048Mi"}}
+```
+
+### Deploy
 To deploy the NIDS cluster, run:
 ```bash
 helm install dnids charts/dnids
