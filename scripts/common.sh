@@ -47,9 +47,3 @@ sudo apt-get install -y cri-o kubelet="$KUBERNETES_FULL_VERSION" kubectl="$KUBER
 sudo apt-mark hold kubelet kubeadm kubectl
 
 sudo systemctl start crio.service
-
-sudo apt-get install -y jq
-local_ip="$(ip --json addr show eth0 | jq -r '.[0].addr_info[] | select(.family == "inet") | .local')"
-sudo cat > /etc/default/kubelet << EOF
-KUBELET_EXTRA_ARGS=--node-ip=$local_ip
-EOF
