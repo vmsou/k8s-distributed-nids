@@ -17,8 +17,9 @@ echo -e "127.0.1.1       $1" >> /etc/hosts
 echo "Hostname set to $1 and /etc/hosts updated."
 
 # Update node ip
-sudo apt-get install -y jq
-local_ip="$(ip --json addr show eth0 | jq -r '.[0].addr_info[] | select(.family == "inet") | .local')"
+local_ip=$(hostname -I | awk '{print $1}')
 sudo cat > /etc/default/kubelet << EOF
 KUBELET_EXTRA_ARGS=--node-ip=$local_ip
 EOF
+
+sudo systemctl restart kubelet
