@@ -27,6 +27,7 @@ minikube start --nodes 1 --cpus 7 --memory 7g --disk-size 30g --driver hyperv --
 Create your own local path storageclass using rancher/local-path-provisioner
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
+kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
 ```
 
 ## Resources
