@@ -66,7 +66,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 HDFS Image
 */}}
 {{- define "hdfs.image" -}}
-"{{ .Values.hdfs.image.repository }}:{{ .Values.hdfs.image.tag }}"
+"{{ .Values.kafka.image.registry }}/{{ .Values.hdfs.image.repository }}:{{ .Values.hdfs.image.tag }}"
 {{- end }}
 
 {{/*
@@ -93,7 +93,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Spark Image
 */}}
 {{- define "spark.image" -}}
-"{{ .Values.spark.image.repository }}:{{ .Values.spark.image.tag }}"
+"{{ .Values.spark.image.registry }}/{{ .Values.spark.image.repository }}:{{ .Values.spark.image.tag }}"
 {{- end }}
 
 {{/*
@@ -120,7 +120,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Kafka Image
 */}}
 {{- define "kafka.image" -}}
-"{{ .Values.kafka.image.repository }}:{{ .Values.kafka.image.tag }}"
+"{{ .Values.kafka.image.registry }}/{{ .Values.kafka.image.repository }}:{{ .Values.kafka.image.tag }}"
 {{- end }}
 
 {{/*
