@@ -58,6 +58,12 @@ helm install dnids charts/dnids --set kafka.enabled=false
 helm upgrade dnids charts/dnids --set kafka.enabled=true
 ```
 
+You may need a Network Policy like calico:
+```bash
+kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+kubectl -n kube-system rollout restart deployment coredns
+```
+
 ### Scaling
 ```
 helm upgrade dnids charts/dnids --set kafka.broker.replicas=3
