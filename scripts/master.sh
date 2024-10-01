@@ -20,7 +20,7 @@ if [[ "$IP_TYPE" == "private" ]]; then
     sudo kubeadm init --apiserver-advertise-address="$MASTER_PRIVATE_IP" --apiserver-cert-extra-sans="$MASTER_PRIVATE_IP" --pod-network-cidr="$POD_CIDR" --node-name "$NODENAME" --ignore-preflight-errors Swap
 
 elif [[ "$IP_TYPE" == "public" ]]; then
-    MASTER_PUBLIC_IP=$(curl ifconfig.me && echo "")
+    MASTER_PUBLIC_IP=$(curl ipinfo.io/ip && echo "")
     sudo kubeadm init --control-plane-endpoint="$MASTER_PUBLIC_IP" --apiserver-cert-extra-sans="$MASTER_PUBLIC_IP" --pod-network-cidr="$POD_CIDR" --node-name "$NODENAME" --ignore-preflight-errors Swap
 
 else
@@ -28,9 +28,10 @@ else
     exit 1
 fi
 
-mkdir -p "$HOME"/.kube
-sudo cp -i /etc/kubernetes/admin.conf "$HOME"/.kube/config
-sudo chown "$(id -u)":"$(id -g)" "$HOME"/.kube/config
+USER_HOME=$(eval echo ~${SUDO_USER})
+mkdir -p "$USER_HOME/.kube"
+sudo cp -i /etc/kubernetes/admin.conf "$USER_HOME/.kube/config"
+sudo chown "$(id -u ${SUDO_USER})":"$(id -g ${SUDO_USER})" "$USER_HOME/.kube/config"
 
 # kubectl apply -f https://raw.githubusercontent.com/antrea-io/antrea/main/build/yamls/antrea.yml
 # kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
