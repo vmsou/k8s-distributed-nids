@@ -18,32 +18,11 @@ It is recommended to use a Linux environment for better compatibility and perfor
 - [HDFS](https://hadoop.apache.org/)
 - [Kafka](https://kafka.apache.org/)
 
-### Setting the Environment (with Minikube)
+### Setting the Environment
+
+Using Minikube
 ```bash
 minikube start --nodes 1 --cpus 7 --memory 7g --disk-size 30g --driver hyperv --profile dnids
-```
-
-### Storage (without Minikube)
-Create your own local path storageclass using rancher/local-path-provisioner
-```bash
-kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
-kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
-```
-
-## Resources
-Set resources values found at values.yaml according to your own environment
-```yaml
-hdfs:
-    ...
-    namenode:
-        ...
-        resources: {"requests": {"cpu": "0.5", "memory": "1024Mi"}, "limits": {"cpu": "1", "memory": "2048Mi"}}
-    ...
-spark:
-    ...
-    worker:
-        ...
-        resources: {"requests": {"cpu": "0.5", "memory": "1024Mi"}, "limits": {"cpu": "2.0", "memory": "2048Mi"}}
 ```
 
 ### Deploy
@@ -58,27 +37,82 @@ helm install dnids charts/dnids --set kafka.enabled=false
 helm upgrade dnids charts/dnids --set kafka.enabled=true
 ```
 
-You may need a Network Policy like calico:
+You may need a Network Policy like Calico: <br>
+https://kubernetes.io/docs/concepts/cluster-administration/addons/
 ```bash
 kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
 kubectl -n kube-system rollout restart deployment coredns
 ```
 
-### Scaling
+A custom **values.yaml** file may look like this:
+```yaml
+hdfs:
+  enabled: true
+
+  service:
+    type: NodePort
+
+  namenode:
+    resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "1.0", "memory": "1024Mi"}}
+    persistence:
+      size: 2G
+
+  datanode:
+    replicas: 1
+
+    resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "1.0", "memory": "1024Mi"}}
+    persistence:
+      size: 10G
+
+spark:
+  enabled: true
+
+  service:
+    type: NodePort
+
+  master:
+    resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "1.0", "memory": "1024Mi"}}
+
+  worker:
+    replicas: 1
+    resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "1.0", "memory": "1024Mi"}}
+
+kafka:
+  enabled: true
+
+  broker:
+    replicas: 1
+
+    resources: {"requests": {"cpu": "0.5", "memory": "512Mi"}, "limits": {"cpu": "1.0", "memory": "1024Mi"}}
+    persistence:
+      size: 2G
 ```
-helm upgrade dnids charts/dnids --set kafka.broker.replicas=3
-helm upgrade dnids charts/dnids --reuse-values --set spark.worker.replicas=3 --set hdfs.datanode.replicas=3
+Then, apply custom values file
+```bash
+helm install dnids charts/dnids -f values.yaml
+helm upgrade dnids charts/dnids -f values.yaml
+```
+
+### Scaling
+Update values.yaml or using following command:
+```
+helm upgrade dnids charts/dnids --reuse-values --set spark.worker.replicas=3 --set hdfs.datanode.replicas=3 -- set kafka.broker.replicas=3
 ```
 
 ### Port-Forward
+If NodePort or LoadBalancer is not set, use:
 ```bash
 kubectl port-forward svc/hdfs-namenode-svc 9870:9870
 kubectl port-forward svc/spark-master-svc 8080:8080
 ```
+else, you can set it using (or updating values.yaml):
+```bash
+helm install dnids charts/dnids --set spark.service.type=NodePort --set hdfs.service.type=LoadBalancer
+```
 
-### Interface URLs
-- HDFS UI: http://localhost:9870
-- Spark Master UI: http://localhost:8080
+### Interface Ports
+- HDFS UI: http://\<IP\>:9870
+- Spark Master UI: http://\<IP\>:8080
 
 ## Notebooks - Machine Learning
 This project utilizes Spark MLlib. To prepare your own models, you can use the following links:
@@ -117,9 +151,9 @@ hdfs dfs -put <model> /user/spark/models/
 ### Configuring Kafka
 ```bash
 kubectl exec -ti kafka-broker-0 -- bash
-kafka-topics.sh --create --topic NetV2 --bootstrap-server kafka-broker-svc:9092
-kafka-topics.sh --list --bootstrap-server kafka-broker-svc:9092
-kafka-console-producer.sh --broker-list kafka-broker-svc:9092 --topic NetV2
+kafka-topics.sh --create --topic NetV2 --bootstrap-server kafka-headless:9092
+kafka-topics.sh --list --bootstrap-server kafka-headless:9092
+kafka-console-producer.sh --broker-list kafka-headless:9092 --topic NetV2
 >csv,separated,data
 ```
 
