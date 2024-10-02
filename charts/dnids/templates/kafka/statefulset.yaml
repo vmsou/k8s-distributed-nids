@@ -121,5 +121,5 @@ spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:
         requests:
-          storage: 5G
+          storage: {{ .Values.kafka.broker.persistence.size }}
 {{- end }}
