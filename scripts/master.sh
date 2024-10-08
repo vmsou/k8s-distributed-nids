@@ -36,4 +36,3 @@ sudo chown "$(id -u ${SUDO_USER})":"$(id -g ${SUDO_USER})" "$USER_HOME/.kube/con
 # kubectl apply -f https://raw.githubusercontent.com/antrea-io/antrea/main/build/yamls/antrea.yml
 # kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
 # kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
-
