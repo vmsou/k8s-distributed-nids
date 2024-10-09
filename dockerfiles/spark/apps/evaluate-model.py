@@ -10,6 +10,8 @@ from pyspark.ml import PipelineModel
 from pyspark.ml.base import Model
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator, BinaryClassificationEvaluator
 
+from ensemble import EnsembleVotingClassifier
+
 
 def parse_arguments():
     # evaluate-model.py -m models/UNSW_DTC_CV_PR_AUC -d datasets/NF-UNSW-NB15-v2.parquet
@@ -18,7 +20,7 @@ def parse_arguments():
     parser.add_argument("-d", "--dataset", help="Path to Dataset", required=True)
     parser.add_argument("--test-ratio", type=float, help="Ratio for test (0.0 to 1.0)", default=1.0)
     parser.add_argument("--seed", type=float, help="Seed Number", default=42)
-    parser.add_argument("-m", "--model", help="Path to Model")
+    parser.add_argument("-m", "--model", nargs="+", help="Path(s) to Model(s). If more than one model, majority vote will be used (ensemble)")
     parser.add_argument("--metrics", nargs="+", default=["accuracy", "f1", "truePositiveRateByLabel", "falsePositiveRateByLabel", "precisionByLabel", "recallByLabel"], choices=["f1", "accuracy", "weightedPrecision", "weightedRecall", "weightedTruePositiveRate", "weightedFalsePositiveRate", "weightedFMeasure", "truePositiveRateByLabel", "falsePositiveRateByLabel", "precisionByLabel", "recallByLabel", "fMeasureByLabel", "logLoss", "hammingLoss"])
     parser.add_argument("--metrics-label", type=float, default=1.0)
 
@@ -108,7 +110,6 @@ def main():
 
     print(" [CONF] ".center(50, "-"))
     print(f"{SCHEMA_PATH=}")
-    print(f"{SCHEMA_PATH=}")
     print(f"{MODEL_PATH=}")
     print(f"{DATASET_PATH=}")
     print(f"{TEST_RATIO=}")
@@ -117,19 +118,26 @@ def main():
     print()
 
     spark = create_session()
+    NUM_PARTITIONS = spark.sparkContext.defaultParallelism * 2
 
     print(" [MODEL] ".center(50, "-"))
     print(f"Loading {MODEL_PATH}...")
     t0 = time.time()
-    model: Model = PipelineModel.load(MODEL_PATH)
+    if len(MODEL_PATH) == 1:
+        model: Model = PipelineModel.load(MODEL_PATH[0])
+        target_col = model.stages[-1].getLabelCol()
+        prediction_col = model.stages[-1].getPredictionCol()
+    else:
+        print("More than one model found. Doing ensemble...")
+        model: Model = EnsembleVotingClassifier([PipelineModel.load(path) for path in MODEL_PATH])
+        target_col = model.getLabelCol()
+        prediction_col = model.getPredictionCol()
+
     t1 = time.time()
     print(f"OK. Done in {t1 - t0}s")
-    target_col = model.stages[-1].getLabelCol()
-    features_col = model.stages[-1].getFeaturesCol()
-    prediction_col = model.stages[-1].getPredictionCol()
+
         
     print("TARGET:", target_col)
-    print("FEATURES:", features_col)
     print("PREDICTIONS:", prediction_col)
     print()
 
@@ -154,30 +162,35 @@ def main():
     print(f"OK. Done in {t1 - t0}s")
     print()
 
-    print(f"Splitting data into TEST: {TEST_RATIO}")
+    print(f"Splitting data into: {TEST_RATIO} ratio")
     test_df = df.sample(TEST_RATIO, seed=SEED)
-    print()
+
+    print(f"Partitioning data...")
+    test_df = test_df.repartition(NUM_PARTITIONS)
 
     print(" [PREDICTIONS] ".center(50, "-"))
     print("Making predictions...")
     t0 = time.time()
     predictions = model.transform(test_df)
-    pred_labels = predictions.select(features_col, "probability", prediction_col, target_col)
+    pred_labels = predictions.select(prediction_col, target_col)
     pred_labels.show(3)
     t1 = time.time()
     print(f"OK. Done in {t1 - t0}s")
     print()
 
+    print(f"Partitioning predictions...")
+    predictions = predictions.repartition(NUM_PARTITIONS)
+
     print(" [METRICS] ".center(50, "-"))
     t0 = time.time()
-    show_binary_metrics(predictions, target_col, prediction_col, ["areaUnderROC", "areaUnderPR"])
+    show_binary_metrics(predictions, target_col, prediction_col, []) # ["areaUnderROC", "areaUnderPR"])
     t1 = time.time()
     print(f"OK. Done in {t1 - t0}s")
     print()
 
     print("Multiclass Metrics:")
     t0 = time.time()
-    show_multiclass_metrics(predictions, target_col, METRICS, METRICS_LABEL)
+    # show_multiclass_metrics(predictions, target_col, METRICS, METRICS_LABEL)
     t1 = time.time()
     print(f"OK. Done in {t1 - t0}s")
     print()
