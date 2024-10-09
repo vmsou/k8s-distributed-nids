@@ -130,9 +130,19 @@ def main() -> None:
     print(" [PREDICTIONS] ".center(50, "-"))
     predictions = model.transform(valid_features).select(features_col, prediction_col, "probability")
 
+    def process_batch(batch_df, batch_id):
+        t0 = time.time()
+        num_rows = batch_df.count()
+        print(f"Processing batch {batch_id}: {num_rows} rows")
+        batch_df.show()
+        t1 = time.time()
+        batch_duration = t1 - t0
+        if batch_duration > 0:
+            ev_per_sec = num_rows / batch_duration
+            print(f"Batch {batch_id}: Processed {num_rows} rows in {batch_duration:.2f} seconds ({ev_per_sec:.2f} EV/S)")
+
     query = predictions.writeStream \
-        .queryName("Predictions Writer") \
-        .format("console") \
+        .foreachBatch(process_batch) \
         .outputMode("append") \
         .trigger(processingTime=PROCESSING_TIME) \
         .start()
