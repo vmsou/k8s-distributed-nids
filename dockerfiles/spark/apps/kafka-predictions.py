@@ -12,11 +12,12 @@ from pyspark.sql.types import StructType
 
 
 def parse_arguments():
-    # kafka-predictions.py -b kafka-broker-0.kafka-headless.default.svc.cluster.local:9092 -t NetV2 --model "models/MODEL_DTC_2F_PR_AUC_UQ" --schema schemas/NetV2_schema.json
+    # apps/kafka-predictions.py -b kafka-headless:9092 -t NetV2 --model "models/RF_PCA10_10F_PR_AUC_US-NF.model" --schema schemas/NetV2_schema.json 
     parser = argparse.ArgumentParser(description="KafkaPredictions")
     parser.add_argument("-b", "--brokers", nargs="+", help="kafka.bootstrap.servers (i.e. <ip1>:<host1> <ip2>:<host2> ... <ipN>:<hostN>)", required=True)
     parser.add_argument("-t", "--topic", help="Kafka Topic (i.e. topic1)", required=True)
     parser.add_argument("-f", "--format", help="Format of data sent by topic", default="csv", choices=["csv", "json"])
+    parser.add_argument("--processing-time", help="Trigger's processing time", required=False, default="1 second")
     parser.add_argument("--schema", help="Path to Schema JSON", default="schemas/NetV2_schema.json", required=True)
     parser.add_argument("--model", help="Path to Model")
     return parser.parse_args()
@@ -52,16 +53,18 @@ def main() -> None:
     BROKERS: str = ",".join(args.brokers)
     TOPIC: str = args.topic
     MODEL_PATH: str = args.model
+    PROCESSING_TIME: str = args.processing_time
     SCHEMA_PATH: str = args.schema
     FORMAT: str = args.format
 
     print()
     print(" [CONF] ".center(50, "-"))
-    print("BROKERS:", BROKERS)
-    print("TOPIC:", TOPIC)
-    print("MODEL_PATH:", MODEL_PATH)
-    print("SCHEMA_PATH:", SCHEMA_PATH)
-    print("FORMAT:", FORMAT)
+    print(f"{BROKERS=}")
+    print(f"{TOPIC=}")
+    print(f"{MODEL_PATH=}")
+    print(f"{PROCESSING_TIME=}")
+    print(f"{SCHEMA_PATH=}")
+    print(f"{FORMAT=}")
     print()
 
     spark = create_session()
@@ -107,7 +110,7 @@ def main() -> None:
         .format("kafka") \
         .option("kafka.bootstrap.servers", BROKERS) \
         .option("subscribe", TOPIC) \
-        .option("startingOffsets", "earliest") \
+        .option("startingOffsets", "latest") \
         .load()
     print("OK")
 
@@ -122,16 +125,16 @@ def main() -> None:
         .select(format_func.alias("features")) \
         .select("features.*")
     
-    # valid_features = features.filter(F.expr(" AND ".join([c._jc.toString() for c in conditions])))
+    valid_features = features.filter(F.expr(" AND ".join([c._jc.toString() for c in conditions])))
 
     print(" [PREDICTIONS] ".center(50, "-"))
-    # predictions = model.transform(valid_features).select(features_col, prediction_col, "probability")
-    predictions = model.transform(features).select(features_col, prediction_col, "probability")
+    predictions = model.transform(valid_features).select(features_col, prediction_col, "probability")
 
     query = predictions.writeStream \
         .queryName("Predictions Writer") \
         .format("console") \
         .outputMode("append") \
+        .trigger(processingTime=PROCESSING_TIME) \
         .start()
     query.awaitTermination()
 
