@@ -17,15 +17,16 @@ def parse_arguments():
     parser.add_argument("-b", "--brokers", nargs="+", help="kafka.bootstrap.servers (i.e. <ip1>:<host1> <ip2>:<host2> ... <ipN>:<hostN>)", required=True)
     parser.add_argument("-t", "--topic", help="Kafka Topic (i.e. topic1)", required=True)
     parser.add_argument("-f", "--format", help="Format of data sent by topic", default="csv", choices=["csv", "json"])
-    parser.add_argument("--processing-time", help="Trigger's processing time", required=False, default="1 second")
     parser.add_argument("--schema", help="Path to Schema JSON", default="schemas/NetV2_schema.json", required=True)
     parser.add_argument("--model", help="Path to Model")
+
+    parser.add_argument("--trigger", help="Type of trigger (micro-batch, interval, available-now)", choices=["micro-batch", "interval", "available-now"], default="micro-batch")
+    parser.add_argument("--trigger-interval", help="Trigger interval time (e.g., '1 second', '10 seconds', '1 minute')", default="1 second")
+
     return parser.parse_args()
 
 
 def create_session() -> SparkSession:
-    # .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0") \
-    # .config("spark.cores.max", '1') \
     name = " ".join([os.path.basename(sys.argv[0])] + sys.argv[1:])
     spark: SparkSession = SparkSession \
         .builder \
@@ -53,7 +54,8 @@ def main() -> None:
     BROKERS: str = ",".join(args.brokers)
     TOPIC: str = args.topic
     MODEL_PATH: str = args.model
-    PROCESSING_TIME: str = args.processing_time
+    TRIGGER_TYPE: str = args.trigger
+    TRIGGER_INTERVAL: str = args.trigger_interval
     SCHEMA_PATH: str = args.schema
     FORMAT: str = args.format
 
@@ -62,7 +64,9 @@ def main() -> None:
     print(f"{BROKERS=}")
     print(f"{TOPIC=}")
     print(f"{MODEL_PATH=}")
-    print(f"{PROCESSING_TIME=}")
+    print(f"{TRIGGER_TYPE=}")
+    if TRIGGER_TYPE == "interval":
+        print(f"{TRIGGER_INTERVAL=}")
     print(f"{SCHEMA_PATH=}")
     print(f"{FORMAT=}")
     print()
@@ -140,14 +144,16 @@ def main() -> None:
         if batch_duration > 0:
             ev_per_sec = num_rows / batch_duration
             print(f"Batch {batch_id}: Processed {num_rows} rows in {batch_duration:.2f} seconds ({ev_per_sec:.2f} EV/S)")
-
+    
+    # Default micro-batch
     query = predictions.writeStream \
         .foreachBatch(process_batch) \
         .outputMode("append") \
-        .trigger(processingTime=PROCESSING_TIME) \
-        .start()
-    query.awaitTermination()
 
+    if TRIGGER_TYPE == "interval": query = query.trigger(processingTime=TRIGGER_INTERVAL)
+    elif TRIGGER_TYPE == "available-now": query = query.trigger(availableNow=True)
+
+    query.start().awaitTermination()
 
 if __name__ == "__main__":
     main()
