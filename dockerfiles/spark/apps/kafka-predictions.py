@@ -23,6 +23,9 @@ def parse_arguments():
     parser.add_argument("--trigger", help="Type of trigger (micro-batch, interval, available-now)", choices=["micro-batch", "interval", "available-now"], default="micro-batch")
     parser.add_argument("--trigger-interval", help="Trigger interval time (e.g., '1 second', '10 seconds', '1 minute')", default="1 second")
 
+    parser.add_argument("--parallelism", help="Parallelism's Number (defaults to sparkContext.defaultParallelism)", type=int, default=None)
+    parser.add_argument("--partitions", help="Dataset repartitions (defaults to paralellism * 2)", required=False, default=None, type=int)
+
     return parser.parse_args()
 
 
@@ -58,6 +61,8 @@ def main() -> None:
     TRIGGER_INTERVAL: str = args.trigger_interval
     SCHEMA_PATH: str = args.schema
     FORMAT: str = args.format
+    PARTITIONS = args.partitions
+    PARALLELISM = args.parallelism
 
     print()
     print(" [CONF] ".center(50, "-"))
@@ -69,12 +74,23 @@ def main() -> None:
         print(f"{TRIGGER_INTERVAL=}")
     print(f"{SCHEMA_PATH=}")
     print(f"{FORMAT=}")
+    print(f"{PARTITIONS=}")
+    print(f"{PARALLELISM=}")
     print()
 
     spark = create_session()
     sc: SparkContext = spark.sparkContext
     sc.setLogLevel("WARN")
 
+    if PARALLELISM is None:
+        PARALLELISM = spark.sparkContext.defaultParallelism
+        print(f"Parallelism is set to None. Defaulting to {PARALLELISM}")
+
+    if PARTITIONS is None:
+        PARTITIONS = PARALLELISM * 2
+        print(f"Partition is set to None. Defaulting to {PARTITIONS}")
+
+    print()
     print(" [MODEL] ".center(50, "-"))
     print(f"Loading '{MODEL_PATH}'...")
 
@@ -109,8 +125,7 @@ def main() -> None:
 
     print(" [KAFKA] ".center(50, "-"))
     print("Setting stream...")
-    df = spark \
-        .readStream \
+    df = spark.readStream \
         .format("kafka") \
         .option("kafka.bootstrap.servers", BROKERS) \
         .option("subscribe", TOPIC) \
@@ -132,13 +147,12 @@ def main() -> None:
     valid_features = features.filter(F.expr(" AND ".join([c._jc.toString() for c in conditions])))
 
     print(" [PREDICTIONS] ".center(50, "-"))
-    predictions = model.transform(valid_features).select(features_col, prediction_col, "probability")
-
     def process_batch(batch_df, batch_id):
+        print(f"Processing batch {batch_id}...")
+        batch_df = batch_df.repartition(PARTITIONS)
         t0 = time.time()
-        num_rows = batch_df.count()
-        print(f"Processing batch {batch_id}: {num_rows} rows")
-        batch_df.show()
+        predictions = model.transform(batch_df) #.select(features_col, prediction_col, "probability")
+        num_rows = predictions.count() # Trigger computations
         t1 = time.time()
         batch_duration = t1 - t0
         if batch_duration > 0:
@@ -146,9 +160,7 @@ def main() -> None:
             print(f"Batch {batch_id}: Processed {num_rows} rows in {batch_duration:.2f} seconds ({ev_per_sec:.2f} EV/S)")
     
     # Default micro-batch
-    query = predictions.writeStream \
-        .foreachBatch(process_batch) \
-        .outputMode("append") \
+    query = valid_features.writeStream.foreachBatch(process_batch)
 
     if TRIGGER_TYPE == "interval": query = query.trigger(processingTime=TRIGGER_INTERVAL)
     elif TRIGGER_TYPE == "available-now": query = query.trigger(availableNow=True)
