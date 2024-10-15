@@ -60,7 +60,7 @@ def main():
     SETUP_PATH = args.setup
     DATASET_PATH = args.dataset
     TRAIN_RATIO = args.train_ratio
-    NUM_PARTITIONS = args.partitions
+    PARTITIONS = args.partitions
     SCHEMA_PATH = args.schema
     OUTPUT_PATH = args.output
     SEED = args.seed
@@ -71,7 +71,7 @@ def main():
     print(f"{SCHEMA_PATH=}")
     print(f"{DATASET_PATH=}")
     print(f"{TRAIN_RATIO=}")
-    print(f"{NUM_PARTITIONS=}")
+    print(f"{PARTITIONS=}")
     print(f"{OUTPUT_PATH=}")
     print()
 
@@ -106,7 +106,6 @@ def main():
             evaluator: Evaluator = MulticlassClassificationEvaluator(labelCol=LABEL_COL, predictionCol=PREDICTION_COL, metricName=METRIC, metricLabel=METRIC_LABEL)
 
         estimator = estimator.setNumFolds(FOLDS).setParallelism(PARALLELISM).setEvaluator(evaluator)
-        print("Done.")
     elif COMMAND == "pipeline":
         estimator: Pipeline = Pipeline.load(SETUP_PATH)
         LABEL_COL = estimator.getStages()[-1].getLabelCol()
@@ -143,11 +142,11 @@ def main():
 
     print(f"Partitioning {DATASET_PATH}...")
     t0 = time.time()
-    if NUM_PARTITIONS is None:
-        NUM_PARTITIONS = spark.sparkContext.defaultParallelism * 2
-        print(f"Partition is set to None. Defaulting to {NUM_PARTITIONS}")
+    if PARTITIONS is None:
+        PARTITIONS = spark.sparkContext.defaultParallelism * 2
+        print(f"Partition is set to None. Defaulting to {PARTITIONS}")
 
-    train_df = train_df.repartition(NUM_PARTITIONS)
+    train_df = train_df.repartition(PARTITIONS)
     t1 = time.time()
     print(f"OK. Done in {t1 - t0}s")
     print()
