@@ -20,6 +20,7 @@ def parse_arguments():
     parser.add_argument("--schema", help="Path to Schema JSON", default="schemas/NetV2_schema.json", required=True)
     parser.add_argument("--model", help="Path to Model")
 
+    parser.add_argument("--metric", action="store_false")
     parser.add_argument("--trigger", help="Type of trigger (micro-batch, interval, available-now)", choices=["micro-batch", "interval", "available-now"], default="micro-batch")
     parser.add_argument("--trigger-interval", help="Trigger interval time (e.g., '1 second', '10 seconds', '1 minute')", default="1 second")
 
@@ -58,6 +59,7 @@ def main() -> None:
     TRIGGER_INTERVAL: str = args.trigger_interval
     SCHEMA_PATH: str = args.schema
     FORMAT: str = args.format
+    METRIC: bool = args.metric
 
     print()
     print(" [CONF] ".center(50, "-"))
@@ -69,6 +71,7 @@ def main() -> None:
         print(f"{TRIGGER_INTERVAL=}")
     print(f"{SCHEMA_PATH=}")
     print(f"{FORMAT=}")
+    print(f"{METRIC=}")
     print()
 
     spark = create_session()
@@ -140,7 +143,7 @@ def main() -> None:
     print(" [PREDICTIONS] ".center(50, "-"))
     predictions = model.transform(parsed_df)
 
-    def process_batch(batch_df, batch_id):
+    def process_batch_eps(batch_df, batch_id):
         t0 = time.time()
         event_count = batch_df.count()
         t1 = time.time()
@@ -151,8 +154,15 @@ def main() -> None:
         else:
             print(f"Batch {batch_id}: No time taken for batch processing (likely empty batch).")
     
+    def process_batch(batch_df, batch_id):
+        print(f"Batch {batch_id} processed")
+        batch_df.show()
+    
     # Default micro-batch
-    query = predictions.writeStream.foreachBatch(process_batch).outputMode("update")
+    if METRIC:
+        query = predictions.writeStream.foreachBatch(process_batch_eps).outputMode("update")
+    else:
+        query = predictions.writeStream.foreachBatch(process_batch).outputMode("update")
 
     if TRIGGER_TYPE == "interval": query = query.trigger(processingTime=TRIGGER_INTERVAL)
     elif TRIGGER_TYPE == "available-now": query = query.trigger(availableNow=True)
