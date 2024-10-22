@@ -35,5 +35,5 @@ class EnsembleVotingClassifier(Transformer, DefaultParamsWritable, DefaultParams
 
         # Majority voting
         num_models = len(self.models)
-        vote_expr = f"double((" + " + ".join([f"prediction_{i}" for i in range(num_models)]) + f") / {num_models} >= 0.5)"
+        vote_expr = f"double((" + " + ".join([f"prediction_{i}" for i in range(num_models)]) + f") / {num_models} < 0.5)"
         return transformed_df.withColumn(self.predictionCol, expr(vote_expr))
