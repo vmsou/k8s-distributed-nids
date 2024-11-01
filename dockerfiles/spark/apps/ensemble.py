@@ -1,39 +1,56 @@
-from typing import Counter
+from functools import reduce
+from typing import List
 from pyspark.ml import Transformer
-from pyspark.ml.base import Model
 from pyspark.ml.util import DefaultParamsWritable, DefaultParamsReadable
-from pyspark.sql.functions import col, expr, monotonically_increasing_id, lit
 from pyspark.sql import DataFrame
+import pyspark.sql.functions as F
+import pyspark.sql.types as T
 
 
 class EnsembleVotingClassifier(Transformer, DefaultParamsWritable, DefaultParamsReadable):
-    def __init__(self, models=None, predictionCol: str = "majority_prediction"):
+    def __init__(self, models: List[Transformer] = None, predictionCol: str = "majority_prediction", use_weights: bool = False):
         super(EnsembleVotingClassifier, self).__init__()
         self.models = models if models else []
-        # self.stages = [stage for model in models for stage in model.stages]
         self.predictionCol = predictionCol
-        self.labelCol = Counter([model.stages[-1].getLabelCol() for model in models]).most_common(1)[0][0]
-        for i, model in enumerate(models): model.stages[-1].setPredictionCol(f"prediction_{i}")
+        self.probabilityCol = "probability"
+        self.rawPredictionCol = "rawPrediction"
+        self.use_weights = use_weights
+        self.labelCol = self._find_common_label_col()
+        for i, model in enumerate(self.models):
+            model.stages[-1].setPredictionCol(f"prediction_{i}")
 
-    def getPredictionCol(self) -> str: return self.predictionCol
-    def getLabelCol(self) -> str: return self.labelCol
-    
+    def _find_common_label_col(self):
+        from collections import Counter
+        label_cols = [model.stages[-1].getLabelCol() for model in self.models]
+        return Counter(label_cols).most_common(1)[0][0]
+
+    def getPredictionCol(self) -> str:
+        return self.predictionCol
+
+    def getLabelCol(self) -> str:
+        return self.labelCol
+
     def _transform(self, df: DataFrame) -> DataFrame:
-        if not self.models: raise ValueError("No models provided for ensemble voting.")
-        df = df.withColumn("id", monotonically_increasing_id())
-        transformed_df = df
-        predictions = [model.transform(df).select("id", f"prediction_{i}") for i, model in enumerate(self.models)]
+        if not self.models:
+            raise ValueError("No models provided for ensemble voting.")
+
+        df = df.withColumn("id", F.monotonically_increasing_id()).cache()
+
+        predictions = [
+            model.transform(df).select("id", f"prediction_{i}").cache()
+            for i, model in enumerate(self.models)
+        ]
+
+        df = reduce(lambda df1, df2: df1.join(df2, on="id", how="inner"), [df] + predictions)
         
-        for pred in predictions:
-            transformed_df = transformed_df.join(pred, "id", "outer")
-
-        # Majority voting
-        # num_models = len(self.models)
-        # vote_array_expr = "array(" + ", ".join([f"prediction_{i}" for i in range(num_models)]) + ")"
-        # vote_expr = f"double(array_sum({vote_array_expr}) / {num_models} >= 0.5) "
-        # return dataset.join(combined_predictions.withColumn(self.predictionCol, expr(vote_expr)))
-
-        # Majority voting
+        prediction_cols = [F.col(f"prediction_{i}") for i in range(len(self.models))]
+        sum_predictions = reduce(lambda x, y: x + y, prediction_cols)
         num_models = len(self.models)
-        vote_expr = f"double((" + " + ".join([f"prediction_{i}" for i in range(num_models)]) + f") / {num_models} < 0.5)"
-        return transformed_df.withColumn(self.predictionCol, expr(vote_expr))
+        majority_threshold = num_models / 2
+
+        df = df.withColumn(self.predictionCol, (sum_predictions > majority_threshold).cast("double")).drop("id")
+
+        df.unpersist()
+
+        return df
+    
