@@ -10,14 +10,17 @@ from pyspark.ml import PipelineModel
 from pyspark.ml.base import Model
 from pyspark.ml.evaluation import  BinaryClassificationEvaluator
 
+from ensemble import EnsembleVotingClassifier
+
 
 def parse_arguments():
-    # evaluate-model.py -m models/UNSW_DTC_CV_PR_AUC -d datasets/NF-UNSW-NB15-v2.parquet
+    # evaluate-model-table.py --test-ratio 0.7 -d "datasets/NF-UNSW-NB15-v2.parquet" "datasets/NF-ToN-IoT-v2.parquet" "datasets/NF-BoT-IoT-v2.parquet" "datasets/NF-CSE-CIC-IDS2018-v2.parquet" "datasets/NF-UQ-NIDS-v2.parquet" --model "models/GBT_PCA10_5F_PR_AUC_US-NF.model" "models/RF_PCA10_10F_PR_AUC_US-NF.model" "models/DTC_10F_PR_AUC_US-NF.model" --ensemble --output "metrics/ensemble-metrics.csv"
     parser = argparse.ArgumentParser(prog="evaluate-model", description="Evaluates a Model. Expects a PipelineModel")
     parser.add_argument("--schema", help="Path to Schema JSON", required=False)
     parser.add_argument("-d", "--dataset", nargs="+", help="Path(s) to Dataset(s)", required=True)
     parser.add_argument("--test-ratio", type=float, help="Ratio for test (0.0 to 1.0)", default=1.0, required=False)
     parser.add_argument("-m", "--model", nargs="+", help="Path(s) to Model(s)", required=True)
+    parser.add_argument("--ensemble", action="store_true")
     parser.add_argument("-o", "--output", help="Path to Output (CSV)", default=None, required=False)
     parser.add_argument("--seed", type=float, help="Seed Number", default=42, required=False)
 
@@ -58,10 +61,11 @@ def binary_metrics(predictions, target_col, prediction_col):
    
     evaluator = BinaryClassificationEvaluator(labelCol=target_col)
 
-    areaUnderROC = evaluator.evaluate(predictions, {evaluator.metricName: "areaUnderROC"})
-    areaUnderPR = evaluator.evaluate(predictions, {evaluator.metricName: "areaUnderPR"})
+    #areaUnderROC = evaluator.evaluate(predictions, {evaluator.metricName: "areaUnderROC"})
+    #areaUnderPR = evaluator.evaluate(predictions, {evaluator.metricName: "areaUnderPR"})
 
-    return accuracy, precision, recall, f1_measure, tnr, areaUnderROC, areaUnderPR
+    # return accuracy, precision, recall, f1_measure, tnr, areaUnderROC, areaUnderPR
+    return tp, tn, fp, fn, accuracy, precision, recall, f1_measure #, areaUnderROC, areaUnderPR
 
 
 def main():    
@@ -71,15 +75,16 @@ def main():
     MODELS_PATHS = args.model
     TEST_RATIO = args.test_ratio
     OUTPUT_PATH = args.output
+    ENSEMBLE = args.ensemble
     SEED = args.seed
 
     print(" [CONF] ".center(50, "-"))
     print(f"{SCHEMA_PATH=}")
-    print(f"{SCHEMA_PATH=}")
-    print(f"{MODELS_PATHS=}")
     print(f"{DATASETS_PATHS=}")
+    print(f"{MODELS_PATHS=}")
     print(f"{TEST_RATIO=}")
     print(f"{OUTPUT_PATH=}")
+    print(f"{ENSEMBLE=}")
     print()
 
     spark = create_session()
@@ -98,38 +103,33 @@ def main():
         print()
 
     print(" [EVALUATION] ".center(50, "-"))
-    results_df = spark.createDataFrame([], schema="Dataset STRING, Model STRING, Accuracy DOUBLE, Precision DOUBLE, Recall DOUBLE, F1 DOUBLE, TNR DOUBLE, areaUnderROC DOUBLE, areaUnderPR DOUBLE")
-    for dataset_path in DATASETS_PATHS:
-        dataset_name = os.path.basename(dataset_path)
-        print(f" [{dataset_name}] ".center(70, "-"))
-        print(f"Loading {dataset_name}...")
-        t0 = time.time()
-        test_df = spark.read.schema(schema).parquet(dataset_path) if schema else spark.read.parquet(dataset_path)
-        t1 = time.time()
-        print(f"OK. Done in {t1 - t0}s")
+    # results_df = spark.createDataFrame([], schema="Dataset STRING, Model STRING, Accuracy DOUBLE, Precision DOUBLE, Recall DOUBLE, F1 DOUBLE, TNR DOUBLE, areaUnderROC DOUBLE, areaUnderPR DOUBLE")
+    results_df = spark.createDataFrame([], schema="Dataset STRING, Model STRING, tp INTEGER, tn INTEGER, fp INTEGER, fn INTEGER, Accuracy DOUBLE, Precision DOUBLE, Recall DOUBLE, F1 DOUBLE")
+    if ENSEMBLE:
+        print(f"Doing ensemble to {MODELS_PATHS}...")
+        model: Model = EnsembleVotingClassifier([PipelineModel.load(path) for path in MODELS_PATHS])
+        model_name = "/".join(os.path.basename(path) for path in MODELS_PATHS)
+        target_col = model.getLabelCol()
+        prediction_col = model.getPredictionCol()
+
+        print("TARGET:", target_col)
+        print("PREDICTIONS:", prediction_col)
         print()
-        
-        if TEST_RATIO < 1.0:
-            print(f"Splitting data into TEST: {TEST_RATIO}")
-            test_df = test_df.sample(TEST_RATIO, seed=SEED)
-            print()
-        
-        for model_path in MODELS_PATHS:
-            model_name = os.path.basename(model_path)
-            print(f" [{model_name}] ".center(70, "-"))
-            print(f"Loading {model_name}...")
+
+        for dataset_path in DATASETS_PATHS:
+            dataset_name = os.path.basename(dataset_path)
+            print(f" [{dataset_name}] ".center(70, "-"))
+            print(f"Loading {dataset_name}...")
             t0 = time.time()
-            model: Model = PipelineModel.load(model_path)
+            test_df = spark.read.schema(schema).parquet(dataset_path) if schema else spark.read.parquet(dataset_path)
             t1 = time.time()
             print(f"OK. Done in {t1 - t0}s")
-            target_col = model.stages[-1].getLabelCol()
-            features_col = model.stages[-1].getFeaturesCol()
-            prediction_col = model.stages[-1].getPredictionCol()
-            
-            print("TARGET:", target_col)
-            print("FEATURES:", features_col)
-            print("PREDICTIONS:", prediction_col)
             print()
+            
+            if TEST_RATIO < 1.0:
+                print(f"Splitting data into TEST: {TEST_RATIO}")
+                test_df = test_df.sample(TEST_RATIO, seed=SEED)
+                print()
 
             print("Making predictions...")
             predictions = model.transform(test_df)
@@ -139,20 +139,85 @@ def main():
             print(" [METRICS] ".center(50, "-"))
             print("Calculating metrics...")
             t0 = time.time()
-            accuracy, precision, recall, f1_measure, tnr, areaUnderROC, areaUnderPR = binary_metrics(predictions, target_col, prediction_col)
+            # accuracy, precision, recall, f1_measure, tnr, areaUnderROC, areaUnderPR = binary_metrics(predictions, target_col, prediction_col)
+            tp, tn, fp, fn, accuracy, precision, recall, f1_measure = binary_metrics(predictions, target_col, prediction_col)
             t1 = time.time()
             print(f"{accuracy=}")
             print(f"{precision=}")
             print(f"{recall=}")
             print(f"{f1_measure=}")
-            print(f"{tnr=}")
-            print(f"{areaUnderROC=}")
-            print(f"{areaUnderPR=}")
+            # print(f"{tnr=}")
+            # print(f"{areaUnderROC=}")
+            # print(f"{areaUnderPR=}")
+            print(f"{tp=}")
+            print(f"{tn=}")
+            print(f"{fp=}")
+            print(f"{fn=}")
             print(f"OK. Done in {t1 - t0}s")
             print()
 
-            result_df = spark.createDataFrame([(dataset_name, model_name, accuracy, precision, recall, f1_measure, tnr, areaUnderROC, areaUnderPR)])
+            # result_df = spark.createDataFrame([(dataset_name, model_name, accuracy, precision, recall, f1_measure, tnr, areaUnderROC, areaUnderPR)])
+            result_df = spark.createDataFrame([(dataset_name, model_name, tp, tn, fp, fn, accuracy, precision, recall, f1_measure)])
             results_df = results_df.union(result_df)
+    else:
+        for dataset_path in DATASETS_PATHS:
+            dataset_name = os.path.basename(dataset_path)
+            print(f" [{dataset_name}] ".center(70, "-"))
+            print(f"Loading {dataset_name}...")
+            t0 = time.time()
+            test_df = spark.read.schema(schema).parquet(dataset_path) if schema else spark.read.parquet(dataset_path)
+            t1 = time.time()
+            print(f"OK. Done in {t1 - t0}s")
+            print()
+            
+            if TEST_RATIO < 1.0:
+                print(f"Splitting data into TEST: {TEST_RATIO}")
+                test_df = test_df.sample(TEST_RATIO, seed=SEED)
+                print()
+            
+                for model_path in MODELS_PATHS:
+                    model_name = os.path.basename(model_path)
+                    print(f" [{model_name}] ".center(70, "-"))
+                    print(f"Loading {model_name}...")
+                    t0 = time.time()
+                    model: Model = PipelineModel.load(model_path)
+                    t1 = time.time()
+                    print(f"OK. Done in {t1 - t0}s")
+                    target_col = model.stages[-1].getLabelCol()
+                    prediction_col = model.stages[-1].getPredictionCol()
+                    
+                    print("TARGET:", target_col)
+                    print("PREDICTIONS:", prediction_col)
+                    print()
+
+                    print("Making predictions...")
+                    predictions = model.transform(test_df)
+                    print(f"OK.")
+                    print()
+
+                    print(" [METRICS] ".center(50, "-"))
+                    print("Calculating metrics...")
+                    t0 = time.time()
+                    # accuracy, precision, recall, f1_measure, tnr, areaUnderROC, areaUnderPR = binary_metrics(predictions, target_col, prediction_col)
+                    tp, tn, fp, fn, accuracy, precision, recall, f1_measure = binary_metrics(predictions, target_col, prediction_col)
+                    t1 = time.time()
+                    print(f"{accuracy=}")
+                    print(f"{precision=}")
+                    print(f"{recall=}")
+                    print(f"{f1_measure=}")
+                    # print(f"{tnr=}")
+                    # print(f"{areaUnderROC=}")
+                    # print(f"{areaUnderPR=}")
+                    print(f"{tp=}")
+                    print(f"{tn=}")
+                    print(f"{fp=}")
+                    print(f"{fn=}")
+                    print(f"OK. Done in {t1 - t0}s")
+                    print()
+
+                    # result_df = spark.createDataFrame([(dataset_name, model_name, accuracy, precision, recall, f1_measure, tnr, areaUnderROC, areaUnderPR)])
+                    result_df = spark.createDataFrame([(dataset_name, model_name, tp, tn, fp, fn, accuracy, precision, recall, f1_measure)])
+                    results_df = results_df.union(result_df)
 
     print("OK. All models have been tested.")
     print()
