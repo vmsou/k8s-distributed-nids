@@ -10,7 +10,7 @@ from pyspark.ml import PipelineModel
 from pyspark.ml.base import Model
 from pyspark.ml.evaluation import  BinaryClassificationEvaluator
 
-from ensemble import EnsembleVotingClassifier
+from ensemble import EnsembleClassifier
 
 
 def parse_arguments():
@@ -21,6 +21,7 @@ def parse_arguments():
     parser.add_argument("--test-ratio", type=float, help="Ratio for test (0.0 to 1.0)", default=1.0, required=False)
     parser.add_argument("-m", "--model", nargs="+", help="Path(s) to Model(s)", required=True)
     parser.add_argument("--ensemble", action="store_true")
+    parser.add_argument("--ensemble-mode", help="Set ensemble mode (majority, attack, normal)", choices=["majority", "attack", "normal"], default="majority")
     parser.add_argument("-o", "--output", help="Path to Output (CSV)", default=None, required=False)
     parser.add_argument("--seed", type=float, help="Seed Number", default=42, required=False)
 
@@ -76,6 +77,7 @@ def main():
     TEST_RATIO = args.test_ratio
     OUTPUT_PATH = args.output
     ENSEMBLE = args.ensemble
+    ENSEMBLE_MODE = args.ensemble_mode
     SEED = args.seed
 
     print(" [CONF] ".center(50, "-"))
@@ -85,6 +87,7 @@ def main():
     print(f"{TEST_RATIO=}")
     print(f"{OUTPUT_PATH=}")
     print(f"{ENSEMBLE=}")
+    if ENSEMBLE: print(f"{ENSEMBLE_MODE=}")
     print()
 
     spark = create_session()
@@ -107,8 +110,8 @@ def main():
     results_df = spark.createDataFrame([], schema="Dataset STRING, Model STRING, tp INTEGER, tn INTEGER, fp INTEGER, fn INTEGER, Accuracy DOUBLE, Precision DOUBLE, Recall DOUBLE, F1 DOUBLE")
     if ENSEMBLE:
         print(f"Doing ensemble to {MODELS_PATHS}...")
-        model: Model = EnsembleVotingClassifier([PipelineModel.load(path) for path in MODELS_PATHS])
-        model_name = "/".join(os.path.basename(path) for path in MODELS_PATHS)
+        model: Model = EnsembleClassifier([PipelineModel.load(path) for path in MODELS_PATHS], mode=ENSEMBLE_MODE)
+        model_name = f"{ENSEMBLE_MODE}/" + "/".join(os.path.basename(path) for path in MODELS_PATHS)
         target_col = model.getLabelCol()
         prediction_col = model.getPredictionCol()
 
