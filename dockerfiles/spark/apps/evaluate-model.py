@@ -41,8 +41,6 @@ def create_session():
     return spark
 
 def binary_metrics(predictions, target_col, prediction_col):
-    # areaUnderROC (balanced) | areaUnderPR (imbalanced)
-
     t0 = predictions[target_col] == 0
     t1 = predictions[target_col] == 1
     p0 = predictions[prediction_col] == 0
@@ -78,12 +76,10 @@ def binary_metrics(predictions, target_col, prediction_col):
     print(f"True Negative Rate: {tnr}")
     print()
    
-    # evaluator = BinaryClassificationEvaluator(labelCol=target_col)
-
+    #evaluator = BinaryClassificationEvaluator(labelCol=target_col)
     #areaUnderROC = evaluator.evaluate(predictions, {evaluator.metricName: "areaUnderROC"})
     #areaUnderPR = evaluator.evaluate(predictions, {evaluator.metricName: "areaUnderPR"})
 
-    # return accuracy, precision, recall, f1_measure, tnr, areaUnderROC, areaUnderPR
     return tp, tn, fp, fn, accuracy, precision, recall, f1_measure #, areaUnderROC, areaUnderPR
 
 
@@ -121,7 +117,6 @@ def main():
         print(schema.simpleString())
         print()
 
-    # results_df = spark.createDataFrame([], schema="Dataset STRING, Model STRING, Accuracy DOUBLE, Precision DOUBLE, Recall DOUBLE, F1 DOUBLE, TNR DOUBLE, areaUnderROC DOUBLE, areaUnderPR DOUBLE")
     results_df = spark.createDataFrame([], schema="Dataset STRING, Model STRING, tp INTEGER, tn INTEGER, fp INTEGER, fn INTEGER, Accuracy DOUBLE, Precision DOUBLE, Recall DOUBLE, F1 DOUBLE")
     if ENSEMBLE:
         print(" [MODEL] ".center(50, "-"))
@@ -154,20 +149,17 @@ def main():
 
             print("Calculating metrics...")
             t0 = time.time()
-            # accuracy, precision, recall, f1_measure, tnr, areaUnderROC, areaUnderPR = binary_metrics(predictions, target_col, prediction_col)
             tp, tn, fp, fn, accuracy, precision, recall, f1_measure = binary_metrics(predictions, target_col, prediction_col)
             t1 = time.time()
             print(f"OK. Done in {t1 - t0}s")
             print()
 
-            # result_df = spark.createDataFrame([(dataset_name, model_name, accuracy, precision, recall, f1_measure, tnr, areaUnderROC, areaUnderPR)])
             result_df = spark.createDataFrame([(dataset_name, model_name, tp, tn, fp, fn, accuracy, precision, recall, f1_measure)])
             results_df = results_df.union(result_df)
     else:
         for dataset_path in DATASETS_PATHS:
             print(" [DATASET] ".center(50, "-"))
             dataset_name = os.path.basename(dataset_path)
-            # print(f" [{dataset_name}] ".center(70, "-"))
             print(f"Loading {dataset_name}...")
             t0 = time.time()
             df = spark.read.schema(schema).parquet(dataset_path) if schema else spark.read.parquet(dataset_path)
@@ -199,24 +191,11 @@ def main():
                 predictions = model.transform(df)
                 print("Calculating metrics...")
                 t0 = time.time()
-                # accuracy, precision, recall, f1_measure, tnr, areaUnderROC, areaUnderPR = binary_metrics(predictions, target_col, prediction_col)
                 tp, tn, fp, fn, accuracy, precision, recall, f1_measure = binary_metrics(predictions, target_col, prediction_col)
                 t1 = time.time()
-                print(f"{accuracy=}")
-                print(f"{precision=}")
-                print(f"{recall=}")
-                print(f"{f1_measure=}")
-                # print(f"{tnr=}")
-                # print(f"{areaUnderROC=}")
-                # print(f"{areaUnderPR=}")
-                print(f"{tp=}")
-                print(f"{tn=}")
-                print(f"{fp=}")
-                print(f"{fn=}")
                 print(f"OK. Done in {t1 - t0}s")
                 print()
 
-                # result_df = spark.createDataFrame([(dataset_name, model_name, accuracy, precision, recall, f1_measure, tnr, areaUnderROC, areaUnderPR)])
                 result_df = spark.createDataFrame([(dataset_name, model_name, tp, tn, fp, fn, accuracy, precision, recall, f1_measure)])
                 results_df = results_df.union(result_df)
 
