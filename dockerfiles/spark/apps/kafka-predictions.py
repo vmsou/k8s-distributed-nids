@@ -7,8 +7,11 @@ import time
 import pyspark.sql.functions as F
 from pyspark import SparkContext
 from pyspark.sql import SparkSession
+from pyspark.ml.base import Model
 from pyspark.ml.pipeline import PipelineModel
 from pyspark.sql.types import StructType
+
+from ensemble import EnsembleClassifier
 
 
 def parse_arguments():
@@ -18,13 +21,16 @@ def parse_arguments():
     parser.add_argument("-t", "--topic", help="Kafka Topic (i.e. topic1)", required=True)
     parser.add_argument("-f", "--format", help="Format of data sent by topic", default="csv", choices=["csv", "json"])
     parser.add_argument("--schema", help="Path to Schema JSON", default="schemas/NetV2_schema.json", required=True)
-    parser.add_argument("--model", help="Path to Model")
+    parser.add_argument("-m", "--model", nargs="+", help="Path(s) to Model(s). If more than one model, ensemble will be used.")
+    parser.add_argument("--ensemble", help="Set ensemble mode (majority, attack, normal)", choices=["majority", "attack", "normal", None], default=None)
 
-    parser.add_argument("--metric", action="store_false")
+
+    parser.add_argument("--metric", help="Displays EV/S", action="store_true")
     parser.add_argument("--trigger", help="Type of trigger (micro-batch, interval, available-now)", choices=["micro-batch", "interval", "available-now"], default="micro-batch")
     parser.add_argument("--trigger-interval", help="Trigger interval time (e.g., '1 second', '10 seconds', '1 minute')", default="1 second")
 
     return parser.parse_args()
+
 
 
 def create_session() -> SparkSession:
@@ -54,7 +60,8 @@ def main() -> None:
     args = parse_arguments()
     BROKERS: str = ",".join(args.brokers)
     TOPIC: str = args.topic
-    MODEL_PATH: str = args.model
+    MODEL_PATH: list[str] = args.model
+    ENSEMBLE = args.ensemble
     TRIGGER_TYPE: str = args.trigger
     TRIGGER_INTERVAL: str = args.trigger_interval
     SCHEMA_PATH: str = args.schema
@@ -66,6 +73,8 @@ def main() -> None:
     print(f"{BROKERS=}")
     print(f"{TOPIC=}")
     print(f"{MODEL_PATH=}")
+    print(f"{ENSEMBLE=}")
+
     print(f"{TRIGGER_TYPE=}")
     if TRIGGER_TYPE == "interval":
         print(f"{TRIGGER_INTERVAL=}")
@@ -80,20 +89,27 @@ def main() -> None:
 
     print()
     print(" [MODEL] ".center(50, "-"))
-    print(f"Loading '{MODEL_PATH}'...")
+    print(f"Loading {MODEL_PATH}...")
 
-    t0 = time.time()
-    model = PipelineModel.load(MODEL_PATH)
-    t1 = time.time()
+    if ENSEMBLE or len(MODEL_PATH) > 1:
+        print("Doing ensemble...")
+        t0 = time.time()
+        model: Model = EnsembleClassifier([PipelineModel.load(path) for path in MODEL_PATH], mode=ENSEMBLE)
+        t1 = time.time()
+        print(f"OK. Done in {t1 - t0}s")
+        target_col = model.getLabelCol()
+        prediction_col = model.getPredictionCol()
+    else:
+        t0 = time.time()
+        model = PipelineModel.load(MODEL_PATH[0])
+        t1 = time.time()
+        prediction_col = model.stages[-1].getPredictionCol()
+        target_col = model.stages[-1].getLabelCol()
+        print(f"OK. Loaded in {t1 - t0}s")
 
-    features_col = model.stages[-1].getFeaturesCol()
-    prediction_col = model.stages[-1].getPredictionCol()
-    target_col = model.stages[-1].getLabelCol()
-    print("FEATURES COLUMN:", features_col)
     print("PREDICTION COLUMN:", prediction_col)
     print("TARGET:", target_col)
 
-    print(f"OK. Loaded in {t1 - t0}s")
     print()
 
     print(" [SCHEMA] ".center(50, "-"))
@@ -135,10 +151,12 @@ def main() -> None:
     elif FORMAT == "json": format_func = F.from_json("value", schema)
     else: raise Exception(f"Format not supported: {FORMAT}.")
 
-    stream_df = stream_df.selectExpr("CAST(value AS STRING)")
-    parsed_df = stream_df.select(format_func.alias("features")).select("features.*").filter(F.expr(" AND ".join([c._jc.toString() for c in conditions])))
+    #stream_df = stream_df.selectExpr("CAST(value AS STRING)")
+    #parsed_df = stream_df.select(format_func.alias("features")).select("features.*").filter(F.expr(" AND ".join([c._jc.toString() for c in conditions])))
+    parsed_df = stream_df.selectExpr("CAST(value AS STRING)", "partition", "offset", "timestamp") \
+                     .select(format_func.alias("features"), "partition", "offset", "timestamp") \
+                     .select("features.*", "partition", "offset", "timestamp")
 
-    # stream_timestamp_df = parsed_df.withColumn("processing_time", F.current_timestamp())
     
     print(" [PREDICTIONS] ".center(50, "-"))
     predictions = model.transform(parsed_df)
@@ -160,14 +178,14 @@ def main() -> None:
     
     # Default micro-batch
     if METRIC:
-        query = predictions.writeStream.foreachBatch(process_batch_eps).outputMode("update")
+        query = predictions.writeStream.foreachBatch(process_batch_eps)
     else:
-        query = predictions.writeStream.foreachBatch(process_batch).outputMode("update")
+        query = predictions.writeStream.foreachBatch(process_batch)
 
     if TRIGGER_TYPE == "interval": query = query.trigger(processingTime=TRIGGER_INTERVAL)
     elif TRIGGER_TYPE == "available-now": query = query.trigger(availableNow=True)
     
-    query.start().awaitTermination()
+    query.outputMode("append").start().awaitTermination()
 
 if __name__ == "__main__":
     main()
