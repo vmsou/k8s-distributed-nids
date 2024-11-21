@@ -37,17 +37,28 @@ class EnsembleClassifier(Transformer, DefaultParamsWritable, DefaultParamsReadab
 
     def getLabelCol(self):
         return self.labelCol
+    
+    def _add_df_id(self, df: DataFrame) -> DataFrame:
+        if not df.isStreaming: return df.withColumn("id", F.monotonically_increasing_id())
+
+        if "timestamp" not in df.columns or "partition" not in df.columns or "offset" not in df.columns:
+            raise ValueError("Kafka metadata (timestamp, partition, offset) is required for streaming DataFrames.")
+
+        # return df.withColumn("id", F.concat_ws("-", F.col("partition"), F.col("offset"), F.col("timestamp").cast("string")))
+        # return df.withColumn("id", F.sha2(F.concat_ws("-", F.col("partition"), F.col("offset"), F.col("timestamp")), 256))
+        return df.withColumn("id", F.expr("uuid()"))
 
     def _transform(self, df: DataFrame) -> DataFrame:
         if not self.models: raise ValueError("No models provided for ensemble voting.")
 
-        df = df.withColumn("id", F.monotonically_increasing_id()).cache()
+        df = self._add_df_id(df)
 
         # Collect predictions from each model
         predictions = [
-            model.transform(df).select("id", f"prediction_{i}").cache()
+            model.transform(df).select("id", f"prediction_{i}")
             for i, model in enumerate(self.models)
         ]
+
 
         df = reduce(lambda df1, df2: df1.join(df2, on="id", how="inner"), [df] + predictions)
 
@@ -59,18 +70,16 @@ class EnsembleClassifier(Transformer, DefaultParamsWritable, DefaultParamsReadab
             majority_threshold = len(self.models) / 2
             df = df.withColumn(self.getOrDefault("predictionCol"), (sum_predictions > majority_threshold).cast("double"))
         elif mode == "attack": # At least one positive vote; then positive
-            positive_vote = reduce(lambda x, y: x | y, [col == 1 for col in prediction_cols])
+            # positive_vote = reduce(lambda x, y: x | y, [col == 1 for col in prediction_cols])
+            positive_vote = reduce(lambda x, y: (x == 1) | (y == 1), prediction_cols)
             df = df.withColumn(self.getOrDefault("predictionCol"), positive_vote.cast("double"))
         elif mode == "normal": # At least one negative vote; then negative
-            negative_vote = reduce(lambda x, y: x | y, [col == 0 for col in prediction_cols])
+            negative_vote = reduce(lambda x, y: (x == 0) | (y == 0), prediction_cols)
             df = df.withColumn(self.getOrDefault("predictionCol"), (~negative_vote).cast("double"))
         else:
             raise ValueError(f"Invalid mode: {mode}. Choose 'majority', 'attack', or 'normal'.")
 
-        # Drop intermediate ID column
-        df = df.drop("id")
-
-        return df
+        return df.drop("id")
 
     def copy(self, extra=None):
         """Creates a copy of this instance with the same params."""
