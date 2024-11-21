@@ -14,72 +14,50 @@ class EnsembleClassifier(Transformer, DefaultParamsWritable, DefaultParamsReadab
 
     def __init__(self, models: List[Transformer] = None, predictionCol: str = "ensemble_prediction", mode: Literal["majority", "attack", "normal"] = "majority"):
         super(EnsembleClassifier, self).__init__()
-        self._setDefault(predictionCol="ensemble_prediction", mode="majority")
+        self._setDefault(predictionCol=predictionCol, mode=mode)
 
         self.models = models if models else []
 
         # Set the string-based Params
         self._set(predictionCol=predictionCol, mode=mode)
 
-        self.labelCol = self._find_common_label_col()
-
-        # unique prediction column for each model in the ensemble
-        for i, model in enumerate(self.models):
-            model.stages[-1].setPredictionCol(f"prediction_{i}")
-
-    def _find_common_label_col(self):
-        from collections import Counter
-        label_cols = [model.stages[-1].getLabelCol() for model in self.models]
-        return Counter(label_cols).most_common(1)[0][0]
+        self.labelCol = models[0].stages[-1].getLabelCol()
 
     def getPredictionCol(self):
         return self.getOrDefault(self.predictionCol)
 
     def getLabelCol(self):
         return self.labelCol
-    
-    def _add_df_id(self, df: DataFrame) -> DataFrame:
-        if not df.isStreaming: return df.withColumn("id", F.monotonically_increasing_id())
-
-        if "timestamp" not in df.columns or "partition" not in df.columns or "offset" not in df.columns:
-            raise ValueError("Kafka metadata (timestamp, partition, offset) is required for streaming DataFrames.")
-
-        # return df.withColumn("id", F.concat_ws("-", F.col("partition"), F.col("offset"), F.col("timestamp").cast("string")))
-        # return df.withColumn("id", F.sha2(F.concat_ws("-", F.col("partition"), F.col("offset"), F.col("timestamp")), 256))
-        return df.withColumn("id", F.expr("uuid()"))
 
     def _transform(self, df: DataFrame) -> DataFrame:
         if not self.models: raise ValueError("No models provided for ensemble voting.")
 
-        df = self._add_df_id(df)
+        predictions_col = "predictions"
+        relevant_columns = df.columns + [predictions_col]
 
-        # Collect predictions from each model
-        predictions = [
-            model.transform(df).select("id", f"prediction_{i}")
-            for i, model in enumerate(self.models)
-        ]
+        df = df.withColumn(predictions_col, F.array())
+        for model in self.models:
+            prediction_col = model.stages[-1].getPredictionCol()
+            df = model.transform(df)
+            # Add prediction to array
+            df = df.withColumn(predictions_col, F.concat(df[predictions_col], F.array(df[prediction_col])))
+            df = df.select(*relevant_columns)
 
-
-        df = reduce(lambda df1, df2: df1.join(df2, on="id", how="inner"), [df] + predictions)
-
-        prediction_cols = [F.col(f"prediction_{i}") for i in range(len(self.models))]
         mode = self.getOrDefault("mode")
-
         if mode == "majority": # Majority voting
-            sum_predictions = reduce(lambda x, y: x + y, prediction_cols)
+            sum_predictions = F.expr(f"aggregate({predictions_col}, cast(0.0 as double), (acc, x) -> acc + x)")
             majority_threshold = len(self.models) / 2
             df = df.withColumn(self.getOrDefault("predictionCol"), (sum_predictions > majority_threshold).cast("double"))
         elif mode == "attack": # At least one positive vote; then positive
-            # positive_vote = reduce(lambda x, y: x | y, [col == 1 for col in prediction_cols])
-            positive_vote = reduce(lambda x, y: (x == 1) | (y == 1), prediction_cols)
+            positive_vote = F.expr(f"array_contains({predictions_col}, 1)")
             df = df.withColumn(self.getOrDefault("predictionCol"), positive_vote.cast("double"))
         elif mode == "normal": # At least one negative vote; then negative
-            negative_vote = reduce(lambda x, y: (x == 0) | (y == 0), prediction_cols)
-            df = df.withColumn(self.getOrDefault("predictionCol"), (~negative_vote).cast("double"))
+            negative_vote = ~F.expr(f"array_contains({predictions_col}, 0)")
+            df = df.withColumn(self.getOrDefault("predictionCol"), negative_vote.cast("double"))
         else:
             raise ValueError(f"Invalid mode: {mode}. Choose 'majority', 'attack', or 'normal'.")
 
-        return df.drop("id")
+        return df
 
     def copy(self, extra=None):
         """Creates a copy of this instance with the same params."""
