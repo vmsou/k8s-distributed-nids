@@ -23,9 +23,7 @@ def parse_arguments():
     parser.add_argument("-m", "--model", nargs="+", help="Path(s) to Model(s).")
     parser.add_argument("--metrics", nargs="+", default=["accuracy", "f1", "truePositiveRateByLabel", "falsePositiveRateByLabel", "precisionByLabel", "recallByLabel"], choices=["f1", "accuracy", "weightedPrecision", "weightedRecall", "weightedTruePositiveRate", "weightedFalsePositiveRate", "weightedFMeasure", "truePositiveRateByLabel", "falsePositiveRateByLabel", "precisionByLabel", "recallByLabel", "fMeasureByLabel", "logLoss", "hammingLoss"])
     parser.add_argument("--metrics-label", type=float, default=1.0)
-    parser.add_argument("--ensemble", action="store_true")
-    parser.add_argument("--ensemble-mode", help="Set ensemble mode (majority, attack, normal)", choices=["majority", "attack", "normal"], default="majority")
-
+    parser.add_argument("--ensemble", help="Set ensemble mode (majority, attack, normal)", choices=["majority", "attack", "normal", None], default=None)
 
     return parser.parse_args()
         
@@ -111,7 +109,6 @@ def main():
     METRICS_LABEL = args.metrics_label
     SEED = args.seed
     ENSEMBLE = args.ensemble
-    ENSEMBLE_MODE = args.ensemble_mode
 
     print(" [CONF] ".center(50, "-"))
     print(f"{SCHEMA_PATH=}")
@@ -121,7 +118,6 @@ def main():
     print(f"{METRICS=}")
     print(f"{METRICS_LABEL=}")
     print(f"{ENSEMBLE=}")
-    if ENSEMBLE: print(f"{ENSEMBLE_MODE=}")
     print()
 
     spark = create_session()
@@ -148,17 +144,19 @@ def main():
     print(f"OK. Done in {t1 - t0}s")
     print()
 
-    print(f"Splitting data into: {TEST_RATIO} ratio")
-    test_df = df.sample(TEST_RATIO, seed=SEED)
+    if TEST_RATIO < 1.0:
+        print(f"Splitting data...")
+        df = df.sample(TEST_RATIO, seed=SEED)
 
     print(f"Partitioning data...")
-    test_df = test_df.repartition(NUM_PARTITIONS)
+    df = df.repartition(NUM_PARTITIONS)
 
-    print(" [MODEL] ".center(50, "-"))
     if ENSEMBLE:
-        print("Doing ensemble...")
+        print(" [MODEL] ".center(50, "-"))
+        print(f"Doing ensemble...")
+        print(f"Loading {MODEL_PATH}...")
         t0 = time.time()
-        model: Model = EnsembleClassifier([PipelineModel.load(path) for path in MODEL_PATH], mode=ENSEMBLE_MODE)
+        model: Model = EnsembleClassifier([PipelineModel.load(path) for path in MODEL_PATH], mode=ENSEMBLE)
         t1 = time.time()
         print(f"OK. Done in {t1 - t0}s")
         target_col = model.getLabelCol()
@@ -168,33 +166,21 @@ def main():
         print("PREDICTIONS:", prediction_col)
         print()
 
-        print(" [PREDICTIONS] ".center(50, "-"))
         print("Making predictions...")
-        t0 = time.time()
-        predictions = model.transform(test_df)
-        # pred_labels = predictions.select(prediction_col, target_col)
-        t1 = time.time()
-        print(f"OK. Done in {t1 - t0}s")
-        print()
-
+        predictions = model.transform(df)
         print(f"Partitioning predictions...")
         predictions = predictions.repartition(NUM_PARTITIONS)
 
-        print(" [METRICS] ".center(50, "-"))
+        print(" [METRICS] ".rjust(25, "-"))
         t0 = time.time()
         show_binary_metrics(predictions, target_col, prediction_col, []) # ["areaUnderROC", "areaUnderPR"])
         t1 = time.time()
         print(f"OK. Done in {t1 - t0}s")
         print()
 
-        print("Multiclass Metrics:")
-        t0 = time.time()
-        # show_multiclass_metrics(predictions, target_col, METRICS, METRICS_LABEL)
-        t1 = time.time()
-        print(f"OK. Done in {t1 - t0}s")
-        print()
     else:
         for model_path in MODEL_PATH:
+            print(" [MODEL] ".center(50, "-"))
             print(f"Loading {model_path}...")
             t0 = time.time()
             model: Model = PipelineModel.load(model_path)
@@ -207,31 +193,18 @@ def main():
             print("PREDICTIONS:", prediction_col)
             print()
 
-            print(" [PREDICTIONS] ".center(50, "-"))
             print("Making predictions...")
-            t0 = time.time()
-            predictions = model.transform(test_df)
-            # pred_labels = predictions.select(prediction_col, target_col)
-            t1 = time.time()
-            print(f"OK. Done in {t1 - t0}s")
-            print()
-
+            predictions = model.transform(df)
             print(f"Partitioning predictions...")
             predictions = predictions.repartition(NUM_PARTITIONS)
 
-            print(" [METRICS] ".center(50, "-"))
+            print(" [METRICS] ".rjust(25, "-"))
             t0 = time.time()
             show_binary_metrics(predictions, target_col, prediction_col, []) # ["areaUnderROC", "areaUnderPR"])
             t1 = time.time()
             print(f"OK. Done in {t1 - t0}s")
             print()
 
-            print("Multiclass Metrics:")
-            t0 = time.time()
-            # show_multiclass_metrics(predictions, target_col, METRICS, METRICS_LABEL)
-            t1 = time.time()
-            print(f"OK. Done in {t1 - t0}s")
-            print()
 
 
 if __name__ == "__main__":
