@@ -9,6 +9,8 @@ from pyspark.sql.types import StructType
 from pyspark.ml import Pipeline
 from pyspark.ml.tuning import CrossValidator
 from pyspark.ml.evaluation import Evaluator, MulticlassClassificationEvaluator, BinaryClassificationEvaluator
+from pyspark.sql import Row
+
 
 Estimator_t = CrossValidator | Pipeline
 
@@ -23,6 +25,7 @@ def parse_arguments():
     parent_parser.add_argument("--partitions", help="Dataset repartitions (defaults to sparkContext.defaultParallelism * 2)", required=False, default=None, type=int)
     parent_parser.add_argument("--seed", type=float, help="Seed Number", default=42)
     parent_parser.add_argument("-o", "--output", help="Path to Model Output")
+    parent_parser.add_argument("--log", help="Path to Training Metrics CSV", default=None)
 
     main_parser = argparse.ArgumentParser()
     subparser = main_parser.add_subparsers(dest="command", required=True, help="Choose model")
@@ -63,8 +66,9 @@ def main():
     PARTITIONS = args.partitions
     SCHEMA_PATH = args.schema
     OUTPUT_PATH = args.output
+    LOG_PATH = args.csv
     SEED = args.seed
-
+    
     print(" [CONF] ".center(50, "-"))
     print(f"{COMMAND=}")
     print(f"{SETUP_PATH=}")
@@ -73,9 +77,11 @@ def main():
     print(f"{TRAIN_RATIO=}")
     print(f"{PARTITIONS=}")
     print(f"{OUTPUT_PATH=}")
+    print(f"{LOG_PATH=}")
     print()
 
     spark = create_session()
+
 
     print(" [SETUP] ".center(50, "-"))
     print(f"Loading {SETUP_PATH}...")
@@ -157,6 +163,7 @@ def main():
     t0 = time.time()
     model: Estimator_t = estimator.fit(train_df)
     t1 = time.time()
+    train_time = t1 - t0
     if COMMAND == "cross-validator": model = model.bestModel
     print(f"OK. Done in {t1 - t0}s")
     print()
@@ -166,6 +173,19 @@ def main():
     print(f"Saving model to {OUTPUT_PATH}...")
     model.write().overwrite().save(OUTPUT_PATH)
     print("OK")
+
+    if LOG_PATH:
+        print(f"Saving training metrics to '{LOG_PATH}'...")
+        row = Row(cores=spark.sparkContext.defaultParallelism, setup=os.path.basename(SETUP_PATH), dataset=os.path.basename(DATASET_PATH), model=os.path.basename(OUTPUT_PATH), train_ratio=TRAIN_RATIO, training_time=train_time)
+        training_data = spark.createDataFrame([row])
+        training_data.show()
+        try:
+            training_data.write.csv(path=LOG_PATH, mode="append", header=True)
+            print(f"OK.")
+        except Exception as e:
+            print(f"Error writing to {LOG_PATH}: {e}")
+    else:
+        print("LOG_PATH not set. Not saving training metrics to csv.")
 
 
 if __name__ == "__main__":
