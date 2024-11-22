@@ -24,13 +24,11 @@ def parse_arguments():
     parser.add_argument("-m", "--model", nargs="+", help="Path(s) to Model(s). If more than one model, ensemble will be used.")
     parser.add_argument("--ensemble", help="Set ensemble mode (majority, attack, normal)", choices=["majority", "attack", "normal", None], default=None)
 
-
     parser.add_argument("--metric", help="Displays EV/S", action="store_true")
     parser.add_argument("--trigger", help="Type of trigger (micro-batch, interval, available-now)", choices=["micro-batch", "interval", "available-now"], default="micro-batch")
     parser.add_argument("--trigger-interval", help="Trigger interval time (e.g., '1 second', '10 seconds', '1 minute')", default="1 second")
 
     return parser.parse_args()
-
 
 
 def create_session() -> SparkSession:
@@ -99,12 +97,16 @@ def main() -> None:
         print(f"OK. Done in {t1 - t0}s")
         target_col = model.getLabelCol()
         prediction_col = model.getPredictionCol()
+        raw_prediction_col = model.getRawPredictionCol()
+        probability_col = model.getProbabilityCol()
     else:
         t0 = time.time()
         model = PipelineModel.load(MODEL_PATH[0])
         t1 = time.time()
         prediction_col = model.stages[-1].getPredictionCol()
         target_col = model.stages[-1].getLabelCol()
+        raw_prediction_col = model.stages[-1].getRawPredictionCol()
+        probability_col = model.stages[-1].getProbabilityCol()
         print(f"OK. Loaded in {t1 - t0}s")
 
     print("PREDICTION COLUMN:", prediction_col)
@@ -153,9 +155,11 @@ def main() -> None:
 
     #stream_df = stream_df.selectExpr("CAST(value AS STRING)")
     #parsed_df = stream_df.select(format_func.alias("features")).select("features.*").filter(F.expr(" AND ".join([c._jc.toString() for c in conditions])))
-    parsed_df = stream_df.selectExpr("CAST(value AS STRING)", "partition", "offset", "timestamp") \
-                     .select(format_func.alias("features"), "partition", "offset", "timestamp") \
-                     .select("features.*", "partition", "offset", "timestamp")
+    parsed_df = stream_df \
+                    .selectExpr("CAST(value AS STRING)", "partition", "offset", "timestamp") \
+                    .select(format_func.alias("features"), "partition", "offset", "timestamp") \
+                    .select("features.*", "partition", "offset", "timestamp") \
+                    .filter(F.expr(" AND ".join([c._jc.toString() for c in conditions])))
 
     
     print(" [PREDICTIONS] ".center(50, "-"))
@@ -166,15 +170,17 @@ def main() -> None:
         event_count = batch_df.count()
         t1 = time.time()
         time_taken = t1 - t0
+        positives = batch_df.filter(F.col(prediction_col) == 1).count()
         if time_taken > 0:
             eps = event_count / time_taken
-            print(f"Batch {batch_id}: {eps:.2f} EV/S - {event_count} events in {time_taken:.2f} seconds")
+            print(f"Batch {batch_id}: {eps:.2f} EV/S - {event_count} events in {time_taken:.2f} seconds with {positives} Positive(s).")
         else:
             print(f"Batch {batch_id}: No time taken for batch processing (likely empty batch).")
     
     def process_batch(batch_df, batch_id):
-        print(f"Batch {batch_id} processed")
-        batch_df.show()
+        positives = batch_df.filter(F.col(prediction_col) == 1).count()
+        print(f"Batch {batch_id}: {positives} Positive(s).") 
+        batch_df.select(prediction_col, raw_prediction_col, probability_col).show()
     
     # Default micro-batch
     if METRIC:
