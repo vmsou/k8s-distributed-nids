@@ -66,7 +66,7 @@ def main():
     PARTITIONS = args.partitions
     SCHEMA_PATH = args.schema
     OUTPUT_PATH = args.output
-    LOG_PATH = args.csv
+    LOG_PATH = args.log
     SEED = args.seed
     
     print(" [CONF] ".center(50, "-"))
@@ -185,7 +185,7 @@ def main():
         except Exception as e:
             print(f"Error writing to {LOG_PATH}: {e}")
     else:
-        print("LOG_PATH not set. Not saving training metrics to csv.")
+        print("Log path not set. Not saving metrics to file.")
 
 
 if __name__ == "__main__":

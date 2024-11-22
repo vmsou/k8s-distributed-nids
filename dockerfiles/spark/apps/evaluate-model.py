@@ -22,7 +22,7 @@ def parse_arguments():
     parser.add_argument("--test-ratio", type=float, help="Ratio for test (0.0 to 1.0)", default=1.0, required=False)
     parser.add_argument("-m", "--model", nargs="+", help="Path(s) to Model(s)", required=True)
     parser.add_argument("--ensemble", help="Set ensemble mode (majority, attack, normal)", choices=["majority", "attack", "normal", None], default=None)
-    parser.add_argument("-o", "--output", help="Path to Output (CSV)", default=None, required=False)
+    parser.add_argument("--log", help="Path to Metrics Output (CSV)", default=None, required=False)
     parser.add_argument("--seed", type=float, help="Seed Number", default=42, required=False)
 
     return parser.parse_args()
@@ -88,7 +88,7 @@ def main():
     DATASETS_PATHS = args.dataset
     MODELS_PATHS = args.model
     TEST_RATIO = args.test_ratio
-    OUTPUT_PATH = args.output
+    LOG_PATH = args.log
     ENSEMBLE = args.ensemble
     SEED = args.seed
 
@@ -97,7 +97,7 @@ def main():
     print(f"{DATASETS_PATHS=}")
     print(f"{MODELS_PATHS=}")
     print(f"{TEST_RATIO=}")
-    print(f"{OUTPUT_PATH=}")
+    print(f"{LOG_PATH=}")
     print(f"{ENSEMBLE=}")
     print()
 
@@ -205,12 +205,14 @@ def main():
 
     print(" [RESULTS] ".center(50, "-"))
     results_df.show()
-    if OUTPUT_PATH:
-        print(f"Saving results to {OUTPUT_PATH}...")
+    if LOG_PATH:
+        print(f"Saving results to {LOG_PATH}...")
         t0 = time.time()
-        results_df.write.csv(OUTPUT_PATH, header=True)
+        results_df.write.csv(LOG_PATH, header=True)
         t1 = time.time()
         print(f"OK. Done in {t1 - t0}s")
+    else:
+        print("Log path not defined. Not saving results to file.")
 
 if __name__ == "__main__":
     main()
