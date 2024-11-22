@@ -4,6 +4,7 @@ import os
 import sys
 import time
 
+from pyspark.sql import functions as F
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType
 from pyspark.ml import PipelineModel
@@ -40,22 +41,28 @@ def create_session():
         .getOrCreate()
     return spark
 
+
 def binary_metrics(predictions, target_col, prediction_col):
     t0 = predictions[target_col] == 0
     t1 = predictions[target_col] == 1
     p0 = predictions[prediction_col] == 0
     p1 = predictions[prediction_col] == 1
-    
-    tp = predictions.filter(t1 & p1).count()
-    tn = predictions.filter(t0 & p0).count()
-    fp = predictions.filter(t0 & p1).count()
-    fn = predictions.filter(t1 & p0).count()
+
+    predictions = predictions.withColumn("actual_predicted", 
+                                     F.when(t1 & p1, "TP")
+                                      .when(t0 & p0, "TN")
+                                      .when(t0 & p1, "FP")
+                                      .when(t1 & p0, "FN")
+                                      .otherwise("Unknown"))
+
+    confusion_matrix_counts = predictions.groupBy("actual_predicted").count().collect()
+
+    tp = next((row['count'] for row in confusion_matrix_counts if row['actual_predicted'] == "TP"), 0)
+    tn = next((row['count'] for row in confusion_matrix_counts if row['actual_predicted'] == "TN"), 0)
+    fp = next((row['count'] for row in confusion_matrix_counts if row['actual_predicted'] == "FP"), 0)
+    fn = next((row['count'] for row in confusion_matrix_counts if row['actual_predicted'] == "FN"), 0)
 
     print("Confusion Matrix:")
-    print(f"{tp=}")
-    print(f"{tn=}")
-    print(f"{fp=}")
-    print(f"{fn=}")
     print()
     print(f"{'Actual/Predicted':^15} | {'Positive':^10} | {'Negative':^10}")
     print(f"{'-'*42}")
@@ -67,21 +74,13 @@ def binary_metrics(predictions, target_col, prediction_col):
     precision = tp / (tp + fp) if (tp + fp) != 0 else 0  
     recall = tp / (tp + fn) if (tp + fn) != 0 else 0.0  
     f1_measure = 2 * (precision * recall) / (precision + recall) if (precision + recall) != 0 else 0.0  
-    tnr = tn / (tn + fp) if (tn + fp) != 0 else 0.0
-
-    print(f"Accuracy: {accuracy}")
-    print(f"Precision: {precision}")
-    print(f"Recall: {recall}")
-    print(f"F1 measure: {f1_measure}")
-    print(f"True Negative Rate: {tnr}")
-    print()
+    # tnr = tn / (tn + fp) if (tn + fp) != 0 else 0.0
    
     #evaluator = BinaryClassificationEvaluator(labelCol=target_col)
     #areaUnderROC = evaluator.evaluate(predictions, {evaluator.metricName: "areaUnderROC"})
     #areaUnderPR = evaluator.evaluate(predictions, {evaluator.metricName: "areaUnderPR"})
 
     return tp, tn, fp, fn, accuracy, precision, recall, f1_measure #, areaUnderROC, areaUnderPR
-
 
 def main():    
     args = parse_arguments()
@@ -133,7 +132,7 @@ def main():
         for dataset_path in DATASETS_PATHS:
             print(f" [METRICS] ".rjust(25, "-"))
             dataset_name = os.path.basename(dataset_path)
-            print(f"Loading {dataset_name}...")
+            print(f"Loading '{dataset_name}'...")
             t0 = time.time()
             df = spark.read.schema(schema).parquet(dataset_path) if schema else spark.read.parquet(dataset_path)
             t1 = time.time()
@@ -154,7 +153,8 @@ def main():
             print(f"OK. Done in {t1 - t0}s")
             print()
 
-            result_df = spark.createDataFrame([(dataset_name, model_name, tp, tn, fp, fn, accuracy, precision, recall, f1_measure)])
+            result_df = spark.createDataFrame([(dataset_name, model_name, tp, tn, fp, fn, accuracy, precision, recall, f1_measure)], schema=results_df.schema)
+            result_df.show()
             results_df = results_df.union(result_df)
     else:
         for dataset_path in DATASETS_PATHS:
@@ -174,8 +174,8 @@ def main():
             for model_path in MODELS_PATHS:
                 print(" [MODEL] ".rjust(25, "-"))
                 model_name = os.path.basename(model_path)
-                print(f" [{model_name}] ".center(70, "-"))
-                print(f"Loading {model_name}...")
+                # print(f" [{model_name}] ".center(70, "-"))
+                print(f"Loading '{model_name}'...")
                 t0 = time.time()
                 model: Model = PipelineModel.load(model_path)
                 t1 = time.time()
@@ -196,7 +196,8 @@ def main():
                 print(f"OK. Done in {t1 - t0}s")
                 print()
 
-                result_df = spark.createDataFrame([(dataset_name, model_name, tp, tn, fp, fn, accuracy, precision, recall, f1_measure)])
+                result_df = spark.createDataFrame([(dataset_name, model_name, tp, tn, fp, fn, accuracy, precision, recall, f1_measure)], schema=results_df.schema)
+                result_df.show()
                 results_df = results_df.union(result_df)
 
     print("OK. All models have been tested.")
