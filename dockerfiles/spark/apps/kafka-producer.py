@@ -18,6 +18,7 @@ def parse_arguments():
     parser.add_argument("-t", "--topic", help="Topic name", required=True)
     parser.add_argument("-f", "--format", help="Message format (csv, json)", default="csv", choices=["csv", "json"])
     parser.add_argument("-d", "--dataset", help="Data Source", required=True)
+    parser.add_argument("--label", help="Label column name", default="Label")
     parser.add_argument("--schema", help="Path to Schema JSON", required=True)
     parser.add_argument("--rows", help="Number of rows to be sent in each batch", default=0, type=int)
     parser.add_argument("--delay", help="Seconds delay between batches", default=1, type=int)
@@ -52,6 +53,7 @@ def spark_schema_from_json(spark: SparkSession, path: str) -> StructType:
 def main():
     args = parse_arguments()
     DATASET_PATH: str = args.dataset
+    LABEL: str = args.label
     SCHEMA_PATH: str = args.schema
     BROKERS: list = ",".join(args.brokers)
     TOPIC: str = args.topic
@@ -63,6 +65,7 @@ def main():
 
     print("[ CONF ]".center(50, "-"))
     print(f"{DATASET_PATH=}")
+    print(f"{LABEL=}")
     print(f"{SCHEMA_PATH=}")
     print(f"{BROKERS=}")
     print(f"{TOPIC=}")
@@ -116,17 +119,17 @@ def main():
                 break
 
             batch_rows = collected_rows[start_idx:end_idx]
-            print(f"Batch {i + 1}: Sending {len(batch_rows)} rows")
 
             if batch_rows:
                 batch_df = spark.createDataFrame(batch_rows, schema=schema)
-
+                positives = batch_df.filter(F.col(LABEL) == 1).count()
                 batch_df.selectExpr(format_expr) \
                     .write \
                     .format("kafka") \
                     .option("kafka.bootstrap.servers", BROKERS) \
                     .option("topic", TOPIC) \
                     .save()
+                print(f"Batch {i + 1}: Sent {len(batch_rows)} rows with {positives} Positive(s).")
 
             time.sleep(DELAY)
 
