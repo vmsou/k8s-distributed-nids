@@ -5,14 +5,14 @@ FOLDS=2
 base_command="spark-submit --conf spark.storage.memoryFraction=0.3 --executor-memory 4g --conf spark.executor.cores=2 --conf spark.cores.max=%d apps/train-model.py cross-validator --folds $FOLDS --metric areaUnderPR -s '%s' -d '%s' -o '%s' --log metrics/training_data.csv"
 
 # Model order list
-model_order=("DTC" "GBT" "LR" "MLPC" "RF")
+model_order=("DT" "GBT" "LR" "MLP" "RF")
 
 # Model setup dictionary
 declare -A model_setups=(
-  ["DTC"]="setups/SETUP_NETV2_DTC_PCA10_CV_PR_AUC"
+  ["DT"]="setups/SETUP_NETV2_DTC_PCA10_CV_PR_AUC"
   ["GBT"]="setups/SETUP_NETV2_GBT_PCA10_CV_PR_AUC"
   ["LR"]="setups/SETUP_NETV2_LR_PCA10_CV_PR_AUC"
-  ["MLPC"]="setups/SETUP_NETV2_MLPC_PCA10_LAYER_CV_PR_AUC"
+  ["MLP"]="setups/SETUP_NETV2_MLPC_PCA10_LAYER_CV_PR_AUC"
   ["RF"]="setups/SETUP_NETV2_RF_PCA10_CV_PR_AUC"
 )
 
