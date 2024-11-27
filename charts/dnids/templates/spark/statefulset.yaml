@@ -33,8 +33,14 @@ spec:
         env:
         - name: SPARK_MODE
           value: master
+        - name: SPARK_PUBLIC_DNS
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+        {{- if .Values.spark.master.daemonMemoryLimit }}
         - name: SPARK_DAEMON_MEMORY
           value: {{ .Values.spark.master.daemonMemoryLimit | quote }}
+        {{- end}}
         {{- if .Values.spark.master.resources }}
         resources: {{- toYaml .Values.spark.master.resources | nindent 10 }}
         {{- end}}
@@ -47,9 +53,10 @@ spec:
             subPath: log4j2.properties
 
         ports:
-        - name: http
+        - name: webui
           protocol: TCP
-          containerPort: {{ .Values.spark.master.containerPorts.http }}
+          containerPort: {{ .Values.spark.master.containerPorts.webui }}
+          hostPort: {{ .Values.spark.master.ports.webui }}
         - name: protocol
           protocol: TCP
           containerPort: {{ .Values.spark.master.containerPorts.protocol }}
@@ -102,8 +109,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: status.hostIP
+        {{- if .Values.spark.worker.daemonMemoryLimit }}
         - name: SPARK_DAEMON_MEMORY
           value: {{ .Values.spark.worker.daemonMemoryLimit | quote }}
+        {{- end }}
         {{- if .Values.spark.worker.memoryLimit }}
         - name: SPARK_WORKER_MEMORY
           value: {{ .Values.spark.worker.memoryLimit | quote }}
@@ -122,10 +131,14 @@ spec:
             subPath: log4j2.properties
 
         ports:
-        - name: http
+        - name: webui
           protocol: TCP
-          containerPort: {{ .Values.spark.worker.containerPorts.http }}
-
+          containerPort: {{ .Values.spark.worker.containerPorts.webui }}
+          hostPort: {{ .Values.spark.worker.ports.webui }}
+        - name: driverui
+          protocol: TCP
+          containerPort: {{ .Values.spark.worker.containerPorts.driverui }}
+          hostPort: {{ .Values.spark.worker.ports.driverui }}
       {{- if .Values.affinity.enabled }}
       affinity:
         podAntiAffinity:

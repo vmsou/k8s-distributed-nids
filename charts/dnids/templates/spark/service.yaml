@@ -19,12 +19,12 @@ spec:
     {{- include "spark.selectorLabels" . | nindent 4}}
     app.kubernetes.io/component: master
   ports:
-  - name: http
+  - name: webui
     protocol: TCP
-    port: {{ .Values.spark.master.ports.http }}
-    targetPort: http
-    {{- if and .Values.spark.master.nodePorts.http (or (eq .Values.spark.service.type "NodePort") (eq .Values.spark.service.type "LoadBalancer")) }}
-    nodePort: {{ .Values.spark.master.nodePorts.http }}
+    port: {{ .Values.spark.master.ports.webui }}
+    targetPort: webui
+    {{- if and .Values.spark.master.nodePorts.webui (or (eq .Values.spark.service.type "NodePort") (eq .Values.spark.service.type "LoadBalancer")) }}
+    nodePort: {{ .Values.spark.master.nodePorts.webui }}
     {{- end}}
 
   - name: protocol
@@ -55,12 +55,19 @@ spec:
     {{- include "spark.selectorLabels" . | nindent 4}}
     app.kubernetes.io/component: worker
   ports:
-  - name: http
+  - name: webui
     protocol: TCP
-    port: {{ .Values.spark.worker.ports.http }}
-    targetPort: http
-    {{- if and .Values.spark.worker.nodePorts.http (or (eq .Values.spark.service.type "NodePort") (eq .Values.spark.service.type "LoadBalancer")) }}
-    nodePort: {{ .Values.spark.worker.nodePorts.http }}
+    port: {{ .Values.spark.worker.ports.webui }}
+    targetPort: webui
+    {{- if and .Values.spark.worker.nodePorts.webui (or (eq .Values.spark.service.type "NodePort") (eq .Values.spark.service.type "LoadBalancer")) }}
+    nodePort: {{ .Values.spark.worker.nodePorts.webui }}
+    {{- end}}
+  - name: driverui
+    protocol: TCP
+    port: {{ .Values.spark.worker.ports.driverui }}
+    targetPort: driverui
+    {{- if and .Values.spark.worker.nodePorts.driverui (or (eq .Values.spark.service.type "NodePort") (eq .Values.spark.service.type "LoadBalancer")) }}
+    nodePort: {{ .Values.spark.worker.nodePorts.driverui }}
     {{- end}}
 ---
 apiVersion: v1

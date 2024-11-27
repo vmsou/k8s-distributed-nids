@@ -61,15 +61,15 @@ spark:
     resources: {"requests": {"cpu": "0.5", "memory": "1024Mi"}, "limits": {"cpu": "1.0", "memory": "1024Mi"}}
 
     containerPorts:
-      http: 8080
+      webui: 8080
       protocol: 7077
     
     ports:
-      http: 8080
+      webui: 8080
       protocol: 7077
 
     nodePorts:
-      http: ""
+      webui: ""
       protocol: ""
 
     loadBalancerIP: ""
@@ -82,14 +82,16 @@ spark:
     resources: {"requests": {"cpu": "0.5", "memory": "1024Mi"}, "limits": {"cpu": "1.0", "memory": "1024Mi"}}
 
     containerPorts:
-      http: 8081
+      webui: 8081
+      driverui: 4040
 
     ports:
-      http: 8081
+      webui: 8081
+      driverui: 4040
 
     nodePorts:
-      http: ""
-      protocol: ""
+      webui: ""
+      driverui: ""
 
     loadBalancerIP: ""
 
