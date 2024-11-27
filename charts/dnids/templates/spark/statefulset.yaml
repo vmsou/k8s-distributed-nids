@@ -98,6 +98,10 @@ spec:
         env:
         - name: SPARK_MODE
           value: "worker"
+        - name: SPARK_PUBLIC_DNS
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
         - name: SPARK_DAEMON_MEMORY
           value: {{ .Values.spark.worker.daemonMemoryLimit | quote }}
         {{- if .Values.spark.worker.memoryLimit }}
@@ -105,7 +109,7 @@ spec:
           value: {{ .Values.spark.worker.memoryLimit | quote }}
         {{- end }}
         - name: SPARK_MASTER_URL
-          value: {{ printf "spark://%s-master-svc:%d" (include "spark.name" .) (int .Values.spark.service.ports.protocol) }}
+          value: {{ printf "spark://%s-master-svc:%d" (include "spark.name" .) (int .Values.spark.master.ports.protocol) }}
         {{- if .Values.spark.worker.resources }}
         resources: {{- toYaml .Values.spark.worker.resources | nindent 10 }}
         {{- end}}

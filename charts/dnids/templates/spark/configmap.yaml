@@ -8,7 +8,7 @@ metadata:
     {{- include "spark.labels" . | nindent 4 }}
 data:
   spark-defaults.conf: |
-    spark.master                     {{ printf "spark://%s-master-svc:%d" (include "spark.name" .) (int .Values.spark.service.ports.protocol) }} 
+    spark.master                     {{ printf "spark://%s-master-svc:%d" (include "spark.name" .) (int .Values.spark.master.ports.protocol) }} 
     spark.hadoop.fs.defaultFS        {{ printf "hdfs://%s-namenode-svc:%d" (include "hdfs.name" .) (int .Values.hdfs.service.ports.protocol) }}
     spark.hadoop.dfs.repication      {{ .Values.hdfs.replication }}
   log4j2.properties: |

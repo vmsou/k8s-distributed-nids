@@ -12,8 +12,8 @@ spec:
   {{- if and .Values.spark.service.clusterIP (eq .Values.spark.service.type "ClusterIP") }}
   clusterIP: {{ .Values.spark.service.clusterIP }}
   {{- end }}
-  {{- if and (eq .Values.spark.service.type "LoadBalancer") (not (empty .Values.spark.service.loadBalancerIP)) }}
-  loadBalancerIP: {{ .Values.spark.service.loadBalancerIP }}
+  {{- if and (eq .Values.spark.service.type "LoadBalancer") (not (empty .Values.spark.master.loadBalancerIP)) }}
+  loadBalancerIP: {{ .Values.spark.master.loadBalancerIP }}
   {{- end }}
   selector: 
     {{- include "spark.selectorLabels" . | nindent 4}}
@@ -21,18 +21,46 @@ spec:
   ports:
   - name: http
     protocol: TCP
-    port: {{ .Values.spark.service.ports.http }}
+    port: {{ .Values.spark.master.ports.http }}
     targetPort: http
-    {{- if and .Values.spark.service.nodePorts.http (or (eq .Values.spark.service.type "NodePort") (eq .Values.spark.service.type "LoadBalancer")) }}
-    nodePort: {{ .Values.spark.service.nodePorts.http }}
+    {{- if and .Values.spark.master.nodePorts.http (or (eq .Values.spark.service.type "NodePort") (eq .Values.spark.service.type "LoadBalancer")) }}
+    nodePort: {{ .Values.spark.master.nodePorts.http }}
     {{- end}}
 
   - name: protocol
     protocol: TCP
-    port: {{ .Values.spark.service.ports.protocol }}
+    port: {{ .Values.spark.master.ports.protocol }}
     targetPort: protocol
-    {{- if and .Values.spark.service.nodePorts.protocol (or (eq .Values.spark.service.type "NodePort") (eq .Values.spark.service.type "LoadBalancer")) }}
-    nodePort: {{ .Values.spark.service.nodePorts.protocol }}
+    {{- if and .Values.spark.master.nodePorts.protocol (or (eq .Values.spark.service.type "NodePort") (eq .Values.spark.service.type "LoadBalancer")) }}
+    nodePort: {{ .Values.spark.master.nodePorts.protocol }}
+    {{- end}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ printf "%s-worker-svc" (include "spark.name" .) }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: 
+    {{- include "spark.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  type: {{ .Values.spark.service.type }}
+  {{- if and .Values.spark.service.clusterIP (eq .Values.spark.service.type "ClusterIP") }}
+  clusterIP: {{ .Values.spark.service.clusterIP }}
+  {{- end }}
+  {{- if and (eq .Values.spark.service.type "LoadBalancer") (not (empty .Values.spark.worker.loadBalancerIP)) }}
+  loadBalancerIP: {{ .Values.spark.worker.loadBalancerIP }}
+  {{- end }}
+  selector: 
+    {{- include "spark.selectorLabels" . | nindent 4}}
+    app.kubernetes.io/component: worker
+  ports:
+  - name: http
+    protocol: TCP
+    port: {{ .Values.spark.worker.ports.http }}
+    targetPort: http
+    {{- if and .Values.spark.worker.nodePorts.http (or (eq .Values.spark.service.type "NodePort") (eq .Values.spark.service.type "LoadBalancer")) }}
+    nodePort: {{ .Values.spark.worker.nodePorts.http }}
     {{- end}}
 ---
 apiVersion: v1

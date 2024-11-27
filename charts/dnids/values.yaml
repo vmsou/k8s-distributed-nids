@@ -55,6 +55,15 @@ spark:
     type: ClusterIP
     clusterIP: None
 
+  master:
+    daemonMemoryLimit: ""
+
+    resources: {"requests": {"cpu": "0.5", "memory": "1024Mi"}, "limits": {"cpu": "1.0", "memory": "1024Mi"}}
+
+    containerPorts:
+      http: 8080
+      protocol: 7077
+    
     ports:
       http: 8080
       protocol: 7077
@@ -65,15 +74,6 @@ spark:
 
     loadBalancerIP: ""
 
-  master:
-    daemonMemoryLimit: ""
-
-    resources: {"requests": {"cpu": "0.5", "memory": "1024Mi"}, "limits": {"cpu": "1.0", "memory": "1024Mi"}}
-
-    containerPorts:
-      http: 8080
-      protocol: 7077
-
   worker:
     replicas: 1
     daemonMemoryLimit: ""
@@ -82,7 +82,16 @@ spark:
     resources: {"requests": {"cpu": "0.5", "memory": "1024Mi"}, "limits": {"cpu": "1.0", "memory": "1024Mi"}}
 
     containerPorts:
-      http: 8080
+      http: 8081
+
+    ports:
+      http: 8081
+
+    nodePorts:
+      http: ""
+      protocol: ""
+
+    loadBalancerIP: ""
 
 kafka:
   enabled: true
