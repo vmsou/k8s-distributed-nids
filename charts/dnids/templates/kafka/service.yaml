@@ -8,9 +8,9 @@ metadata:
     {{- include "kafka.labels" . | nindent 4 }}
     app.kubernetes.io/component: broker
 spec:
-  type: {{ .Values.spark.service.type }}
-  {{- if and .Values.spark.service.clusterIP (eq .Values.spark.service.type "ClusterIP") }}
-  clusterIP: {{ .Values.spark.service.clusterIP }}
+  type: {{ .Values.kafka.service.type }}
+  {{- if and .Values.kafka.service.clusterIP (eq .Values.kafka.service.type "ClusterIP") }}
+  clusterIP: {{ .Values.kafka.service.clusterIP }}
   {{- end }}
   {{- if and (eq .Values.kafka.service.type "LoadBalancer") (not (empty .Values.kafka.service.loadBalancerIP)) }}
   loadBalancerIP: {{ .Values.kafka.service.loadBalancerIP }}
