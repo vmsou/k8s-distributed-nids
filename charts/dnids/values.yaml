@@ -16,14 +16,6 @@ hdfs:
     type: ClusterIP
     clusterIP: None
 
-    ports:
-      http: 9870
-      protocol: 8020
-
-    nodePorts:
-      http: ""
-      protocol: ""
-
   namenode:
     mountPath: "/hadoop/dfs/namenode"
     resources: {"requests": {"cpu": "0.5", "memory": "1024Mi"}, "limits": {"cpu": "1.0", "memory": "1024Mi"}}
@@ -34,13 +26,31 @@ hdfs:
       http: 9870
       protocol: 8020
 
+    ports:
+      http: 9870
+      protocol: 8020
+
+    nodePorts:
+      http: ""
+      protocol: ""
+
   datanode:
+    hostname: ""
     mountPath: "/hadoop/dfs/datanode"
     replicas: 1
 
     resources: {"requests": {"cpu": "0.5", "memory": "1024Mi"}, "limits": {"cpu": "1.0", "memory": "1024Mi"}}
     persistence:
       size: 10G
+
+    containerPorts:
+      http: 9864
+
+    ports:
+      http: 9864
+
+    nodePorts:
+      http: ""
 
 spark:
   enabled: true

@@ -41,12 +41,9 @@ spec:
         resources: {{- toYaml .Values.hdfs.namenode.resources | nindent 10 }}
         {{- end}}
         volumeMounts:
-          - mountPath: /opt/hadoop/etc/hadoop/core-site.xml
-            name: hdfs-configmap
-            subPath: core-site.xml
-          - mountPath: /opt/hadoop/etc/hadoop/hdfs-site.xml
-            name: hdfs-configmap
-            subPath: hdfs-site.xml
+          - name: hdfs-configmap
+            mountPath: /opt/hadoop/etc/hadoop/
+            readOnly: true
           - name: data
             mountPath: {{ .Values.hdfs.namenode.mountPath }}
         
@@ -54,6 +51,7 @@ spec:
         - name: http
           protocol: TCP
           containerPort: {{ .Values.hdfs.namenode.containerPorts.http }}
+          hostPort: {{ .Values.hdfs.namenode.ports.http }}
         - name: protocol
           protocol: TCP
           containerPort: {{ .Values.hdfs.namenode.containerPorts.protocol }}
@@ -123,18 +121,23 @@ spec:
       - name: hdfs-datanode
         image: {{ include "hdfs.image" . }}
         imagePullPolicy: {{ .Values.hdfs.image.pullPolicy | quote }}
+
         {{- if .Values.hdfs.datanode.resources }}
         resources: {{- toYaml .Values.hdfs.datanode.resources | nindent 10 }}
         {{- end}}
         volumeMounts:
-          - mountPath: /opt/hadoop/etc/hadoop/core-site.xml
-            name: hdfs-configmap
-            subPath: core-site.xml
-          - mountPath: /opt/hadoop/etc/hadoop/hdfs-site.xml
-            name: hdfs-configmap
-            subPath: hdfs-site.xml
+          - name: hdfs-configmap
+            mountPath: /opt/hadoop/etc/hadoop/
+            readOnly: true
+
           - name: data
             mountPath: {{ .Values.hdfs.datanode.mountPath }}
+
+        ports:
+        - name: http
+          protocol: TCP
+          containerPort: {{ .Values.hdfs.datanode.containerPorts.http }}
+          hostPort: {{ .Values.hdfs.datanode.ports.http }}
 
         command: ["hdfs", "datanode"]
 
