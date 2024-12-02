@@ -4,6 +4,7 @@ import os
 import sys
 import time
 
+from pyspark import StorageLevel
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType
 from pyspark.ml import Pipeline
@@ -142,21 +143,18 @@ def main():
     print(f"OK. Done in {t1 - t0}s")
     print()
 
-    print(f"Splitting data into {TRAIN_RATIO}")
-    train_df = train_df.sample(TRAIN_RATIO, seed=SEED)
-    print()
+    print("Setting persist to MEMORY_AND_DISK...")
+    train_df.persist(StorageLevel.MEMORY_AND_DISK)
 
-    print(f"Partitioning {DATASET_PATH}...")
-    t0 = time.time()
+    print(f"Splitting data into {TRAIN_RATIO} split...")
+    train_df = train_df.sample(TRAIN_RATIO, seed=SEED)
+
     if PARTITIONS is None:
         PARTITIONS = spark.sparkContext.defaultParallelism * 2
-        print(f"Partition is set to None. Defaulting to {PARTITIONS}")
+
+    print(f"Repartitioning into {PARTITIONS} partitions...")
 
     train_df = train_df.repartition(PARTITIONS)
-    t1 = time.time()
-    print(f"OK. Done in {t1 - t0}s")
-    print()
-
 
     print(" [MODEL] ".center(50, "-"))
     print("Training model...")
