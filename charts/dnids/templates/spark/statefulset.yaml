@@ -56,7 +56,9 @@ spec:
         - name: webui
           protocol: TCP
           containerPort: {{ .Values.spark.master.containerPorts.webui }}
+          {{- (eq .Values.spark.service.type "ClusterIP") }}
           hostPort: {{ .Values.spark.master.ports.webui }}
+          {{- end }}
         - name: protocol
           protocol: TCP
           containerPort: {{ .Values.spark.master.containerPorts.protocol }}
@@ -134,11 +136,15 @@ spec:
         - name: webui
           protocol: TCP
           containerPort: {{ .Values.spark.worker.containerPorts.webui }}
+          {{- (eq .Values.spark.service.type "ClusterIP") }}
           hostPort: {{ .Values.spark.worker.ports.webui }}
+          {{- end }}
         - name: driverui
           protocol: TCP
           containerPort: {{ .Values.spark.worker.containerPorts.driverui }}
+          {{- (eq .Values.spark.service.type "ClusterIP") }}
           hostPort: {{ .Values.spark.worker.ports.driverui }}
+          {{- end }}
       {{- if .Values.affinity.enabled }}
       affinity:
         podAntiAffinity:
