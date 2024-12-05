@@ -51,7 +51,7 @@ spec:
         - name: http
           protocol: TCP
           containerPort: {{ .Values.hdfs.namenode.containerPorts.http }}
-          {{- (eq .Values.spark.service.type "ClusterIP") }}
+          {{- if (eq .Values.hdfs.service.type "ClusterIP") }}
           hostPort: {{ .Values.hdfs.namenode.ports.http }}
           {{- end }}
         - name: protocol
@@ -139,7 +139,7 @@ spec:
         - name: http
           protocol: TCP
           containerPort: {{ .Values.hdfs.datanode.containerPorts.http }}
-          {{- (eq .Values.spark.service.type "ClusterIP") }}
+          {{- if (eq .Values.hdfs.service.type "ClusterIP") }}
           hostPort: {{ .Values.hdfs.datanode.ports.http }}
           {{- end }}
 
