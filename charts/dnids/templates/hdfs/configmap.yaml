@@ -21,8 +21,23 @@ data:
     <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
     <configuration>
     <property>
+        <name>dfs.namenode.rpc-bind-host</name>
+        <value>0.0.0.0</value>
+    </property>
+
+    <property>
+        <name>dfs.namenode.http-bind-host</name>
+        <value>0.0.0.0</value>
+    </property>
+
+    <property>
         <name>dfs.namenode.http-address</name>
         <value>{{ printf "%s-namenode-svc:%d" (include "hdfs.name" .) (int .Values.hdfs.namenode.ports.http) }}</value>
+    </property>
+
+    <property>
+        <name>dfs.namenode.rpc-address</name>
+        <value>{{ printf "%s-namenode-svc:%d" (include "hdfs.name" .) (int .Values.hdfs.namenode.ports.protocol) }}</value>
     </property>
 
     <property>
