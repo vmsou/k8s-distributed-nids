@@ -54,9 +54,9 @@ spec:
           {{- if (eq .Values.hdfs.service.type "ClusterIP") }}
           hostPort: {{ .Values.hdfs.namenode.ports.http }}
           {{- end }}
-        - name: protocol
+        - name: rpc
           protocol: TCP
-          containerPort: {{ .Values.hdfs.namenode.containerPorts.protocol }}
+          containerPort: {{ .Values.hdfs.namenode.containerPorts.rpc }}
             
         command: ["/bin/sh"]
         args: ["-c", "if [ ! -f {{ .Values.hdfs.namenode.mountPath }}/current/VERSION ]; then hdfs namenode -format -force; fi && exec hdfs namenode"]

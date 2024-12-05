@@ -13,7 +13,7 @@ data:
     <configuration>
     <property>
         <name>fs.defaultFS</name>
-        <value>{{ printf "hdfs://%s-namenode-svc:%d" (include "hdfs.name" .) (int .Values.hdfs.namenode.ports.protocol) }}</value> 
+        <value>{{ printf "hdfs://%s-namenode-svc:%d" (include "hdfs.name" .) (int .Values.hdfs.namenode.ports.rpc) }}</value> 
     </property>
     </configuration>
   hdfs-site.xml: |
@@ -37,7 +37,7 @@ data:
 
     <property>
         <name>dfs.namenode.rpc-address</name>
-        <value>{{ printf "%s-namenode-svc:%d" (include "hdfs.name" .) (int .Values.hdfs.namenode.ports.protocol) }}</value>
+        <value>{{ printf "%s-namenode-svc:%d" (include "hdfs.name" .) (int .Values.hdfs.namenode.ports.rpc) }}</value>
     </property>
 
     <property>

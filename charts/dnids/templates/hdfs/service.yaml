@@ -27,12 +27,12 @@ spec:
     nodePort: {{ .Values.hdfs.namenode.nodePorts.http }}
     {{- end}}
 
-  - name: protocol
+  - name: rpc
     protocol: TCP
-    port: {{ .Values.hdfs.namenode.ports.protocol }}
-    targetPort: protocol
-    {{- if and .Values.hdfs.namenode.nodePorts.protocol (or (eq .Values.hdfs.service.type "NodePort") (eq .Values.hdfs.service.type "LoadBalancer")) }}
-    nodePort: {{ .Values.hdfs.namenode.nodePorts.protocol }}
+    port: {{ .Values.hdfs.namenode.ports.rpc }}
+    targetPort: rpc
+    {{- if and .Values.hdfs.namenode.nodePorts.rpc (or (eq .Values.hdfs.service.type "NodePort") (eq .Values.hdfs.service.type "LoadBalancer")) }}
+    nodePort: {{ .Values.hdfs.namenode.nodePorts.rpc }}
     {{- end}}
 ---
 apiVersion: v1
