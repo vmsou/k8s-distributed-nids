@@ -24,15 +24,15 @@ hdfs:
 
     containerPorts:
       http: 9870
-      protocol: 8020
+      rpc: 8020
 
     ports:
       http: 9870
-      protocol: 8020
+      rpc: 8020
 
     nodePorts:
       http: ""
-      protocol: ""
+      rpc: ""
 
   datanode:
     hostname: ""
@@ -67,20 +67,19 @@ spark:
 
   master:
     daemonMemoryLimit: ""
-
     resources: {"requests": {"cpu": "0.5", "memory": "1024Mi"}, "limits": {"cpu": "1.0", "memory": "1024Mi"}}
 
     containerPorts:
       webui: 8080
-      protocol: 7077
+      rpc: 7077
     
     ports:
       webui: 8080
-      protocol: 7077
+      rpc: 7077
 
     nodePorts:
       webui: ""
-      protocol: ""
+      rpc: ""
 
     loadBalancerIP: ""
 
