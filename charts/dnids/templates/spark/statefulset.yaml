@@ -59,9 +59,9 @@ spec:
           {{- if (eq .Values.spark.service.type "ClusterIP") }}
           hostPort: {{ .Values.spark.master.ports.webui }}
           {{- end }}
-        - name: protocol
+        - name: rpc
           protocol: TCP
-          containerPort: {{ .Values.spark.master.containerPorts.protocol }}
+          containerPort: {{ .Values.spark.master.containerPorts.rpc }}
 
       {{- if .Values.affinity.enabled }}
       affinity:
@@ -120,7 +120,7 @@ spec:
           value: {{ .Values.spark.worker.memoryLimit | quote }}
         {{- end }}
         - name: SPARK_MASTER_URL
-          value: {{ printf "spark://%s-master-svc:%d" (include "spark.name" .) (int .Values.spark.master.ports.protocol) }}
+          value: {{ printf "spark://%s-master-svc:%d" (include "spark.name" .) (int .Values.spark.master.ports.rpc) }}
         {{- if .Values.spark.worker.resources }}
         resources: {{- toYaml .Values.spark.worker.resources | nindent 10 }}
         {{- end}}

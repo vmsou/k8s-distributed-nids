@@ -27,12 +27,12 @@ spec:
     nodePort: {{ .Values.spark.master.nodePorts.webui }}
     {{- end}}
 
-  - name: protocol
+  - name: rpc
     protocol: TCP
-    port: {{ .Values.spark.master.ports.protocol }}
-    targetPort: protocol
-    {{- if and .Values.spark.master.nodePorts.protocol (or (eq .Values.spark.service.type "NodePort") (eq .Values.spark.service.type "LoadBalancer")) }}
-    nodePort: {{ .Values.spark.master.nodePorts.protocol }}
+    port: {{ .Values.spark.master.ports.rpc }}
+    targetPort: rpc
+    {{- if and .Values.spark.master.nodePorts.rpc (or (eq .Values.spark.service.type "NodePort") (eq .Values.spark.service.type "LoadBalancer")) }}
+    nodePort: {{ .Values.spark.master.nodePorts.rpc }}
     {{- end}}
 ---
 apiVersion: v1
