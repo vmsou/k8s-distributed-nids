@@ -33,10 +33,10 @@ declare -A datasets=(
 for dataset_name in "${dataset_names[@]}"; do
   dataset=${datasets[$dataset_name]}
   
-  for core_count in "${cores[@]}"; do
-    for model in "${model_order[@]}"; do
+  for model in "${model_order[@]}"; do
+    for core_count in "${cores[@]}"; do
       setup=${model_setups[$model]}
-      command=$(printf "$base_command" "$core_count" "$setup" "$dataset" "models/${model}_${FOLDS}F_${METRIC}_${dataset_name}.model")
+      command=$(printf "$base_command" "$core_count" "$setup" "$dataset" "models/${model}/${model}_${FOLDS}F_${METRIC}_${dataset_name}.model")
       eval "$command"
     done
   done
