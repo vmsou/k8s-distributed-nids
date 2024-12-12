@@ -1,9 +1,12 @@
 #!/bin/bash
 
 cores=(10 8 6 4 2)
+WORKER_CORES="2"
 FOLDS=2
-METRIC="areaUnderPR"
-base_command="spark-submit --conf spark.memory.storageFraction=0.4 --conf spark.sql.adaptive.enabled=true --executor-memory 4g --conf spark.executor.cores=2 --conf spark.cores.max=%d apps/train-model.py cross-validator --folds $FOLDS --metric $METRIC -s '%s' -d '%s' -o '%s' --log metrics/training_data.csv"
+METRIC="f1"
+EXECUTOR_MEMORY="4g"
+TRAIN_RATIO="0.7"
+base_command="spark-submit --executor-memory $EXECUTOR_MEMORY --conf spark.executor.cores=$WORKER_CORES --conf spark.cores.max=%d apps/train-model.py cross-validator --folds $FOLDS --metric $METRIC --train-ratio $TRAIN_RATIO -s '%s' -d '%s' -o '%s' --log metrics/training_data.csv"
 
 # Model order list
 model_order=("DT" "GBT" "LR" "MLP" "RF")
