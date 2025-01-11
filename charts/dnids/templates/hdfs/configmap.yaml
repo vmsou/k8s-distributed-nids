@@ -56,7 +56,7 @@ data:
     </property>
     
     </configuration>
-  hdfs-site.xml: |
+  log4j.properties: |
     # Define some default values that can be overridden by system properties
     hadoop.root.logger=INFO,console
     hadoop.log.dir=.
