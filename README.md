@@ -5,10 +5,48 @@ This project involves Distributed Network Intrusion Detection System (NIDS) with
 
 It is recommended to use a Linux environment for better compatibility and performance.
 
+### README.md structure
+- Badges
+- Dependences
+- Components
+- Hardware
+- Software
+- Environment
+- Notebooks (ML)
+- Configs
+
+### Considereds badges
+- Available Artifacts(SeloD)
+- Functional Artifacts (SeloF)
+- Sustainteble Artifacts (SeloS)
+- Reproductible Experiments (SeloR)
+
+### Dependences 
+- Numpy (Last version)
+- Openblas
+- Spark 3.5.1
+- spark-sql-kafka-0-10_2.12
+- kafka-clients-3.5.1
+- spark-token-provider-kafka-0-10_2.12
+- commons-pool2-2.11.1
+- HDFS 3.3.6
+- Kafka 3.6.2
+
 ### Components
 - Apache Spark: Used for parallel processing and real-time data analysis and MLlib for Machine Learning
 - HDFS (Hadoop Distributed File System): For distributed storage
 - Apache Kafka: Responsible for continuous ingestion of network data
+
+### Hardware
+- 3 computadores
+- Sistema Debian
+- 3 Máquinas virtuais hyper-V
+- 1x Spark Master (2 Cores, 3GB)
+- 5x Spark Worker (2 Cores, 6GB)
+- 1x HDFS Namenode (1 Core, 2GB)
+- 1x HDFS Datanode (1 Core, 2GB)
+- 1x Kafka Broker (2 Cores, 2GB)
+- Totalizando 16 Cores e 40GB de RAM rodando no Kubernetes.
 
 ### Software
 - [Kubernetes](https://kubernetes.io/)
