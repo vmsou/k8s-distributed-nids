@@ -7,7 +7,7 @@ It is recommended to use a Linux environment for better compatibility and perfor
 
 ### README.md structure
 - Badges
-- Dependences
+- Dependencies
 - Components
 - Hardware
 - Software
@@ -15,13 +15,13 @@ It is recommended to use a Linux environment for better compatibility and perfor
 - Notebooks (ML)
 - Configs
 
-### Considereds badges
+### Considered Badges
 - Available Artifacts(SeloD)
 - Functional Artifacts (SeloF)
 - Sustainteble Artifacts (SeloS)
 - Reproductible Experiments (SeloR)
 
-### Dependences 
+### Dependencies 
 - Numpy (Last version)
 - Openblas
 - Spark 3.5.1
@@ -38,15 +38,15 @@ It is recommended to use a Linux environment for better compatibility and perfor
 - Apache Kafka: Responsible for continuous ingestion of network data
 
 ### Hardware
-- 3 computadores
-- Sistema Debian
-- 3 Máquinas virtuais hyper-V
+- 3 Computers
+- Debian OS
+- 3 Virtual machines Hyper-V
 - 1x Spark Master (2 Cores, 3GB)
 - 5x Spark Worker (2 Cores, 6GB)
 - 1x HDFS Namenode (1 Core, 2GB)
 - 1x HDFS Datanode (1 Core, 2GB)
 - 1x Kafka Broker (2 Cores, 2GB)
-- Totalizando 16 Cores e 40GB de RAM rodando no Kubernetes.
+- Totaling 16 Cores and 40GB of RAM running on Kubernetes.
 
 ### Software
 - [Kubernetes](https://kubernetes.io/)
